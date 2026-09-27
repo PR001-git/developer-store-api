@@ -4,6 +4,7 @@ using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Enums;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Ambev.DeveloperEvaluation.Unit.Domain.Entities.TestData;
+using AutoMapper;
 using FluentAssertions;
 using NSubstitute;
 using Xunit;
@@ -18,6 +19,7 @@ public class AuthenticateUserHandlerTests
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly IMapper _mapper;
     private readonly AuthenticateUserHandler _handler;
 
     /// <summary>
@@ -28,8 +30,9 @@ public class AuthenticateUserHandlerTests
         _userRepository = Substitute.For<IUserRepository>();
         _passwordHasher = Substitute.For<IPasswordHasher>();
         _jwtTokenGenerator = Substitute.For<IJwtTokenGenerator>();
+        _mapper = Substitute.For<IMapper>();
         _passwordHasher.DummyHash.Returns("dummy-hash");
-        _handler = new AuthenticateUserHandler(_userRepository, _passwordHasher, _jwtTokenGenerator);
+        _handler = new AuthenticateUserHandler(_userRepository, _passwordHasher, _jwtTokenGenerator, _mapper);
     }
 
     /// <summary>
@@ -91,5 +94,41 @@ public class AuthenticateUserHandlerTests
 
         // Then
         await act.Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("User is not active");
+    }
+
+    /// <summary>
+    /// Tests that a valid login builds the result from the mapped user (carrying every field AutoMapper knows how
+    /// to copy, such as Id and Phone, which the handler used to leave empty by building AuthenticateUserResult by
+    /// hand) and then sets the token the hand-built result never went through the mapper to get.
+    /// </summary>
+    [Fact(DisplayName = "Given an active user When authenticating with the right password Then returns the mapped result with the token set")]
+    public async Task Given_ActiveUser_When_AuthenticatingWithRightPassword_Then_ReturnsMappedResultWithTokenSet()
+    {
+        // Given
+        var user = UserTestData.GenerateValidUser();
+        user.Id = Guid.NewGuid();
+        user.Status = UserStatus.Active;
+        _userRepository.GetByEmailAsync(user.Email, Arg.Any<CancellationToken>()).Returns(user);
+        _passwordHasher.VerifyPassword(Arg.Any<string>(), user.Password).Returns(true);
+        _jwtTokenGenerator.GenerateToken(user).Returns("a-jwt-token");
+        var mappedResult = new AuthenticateUserResult
+        {
+            Id = user.Id,
+            Name = user.Username,
+            Email = user.Email,
+            Phone = user.Phone,
+            Role = user.Role.ToString()
+        };
+        _mapper.Map<AuthenticateUserResult>(user).Returns(mappedResult);
+        var command = new AuthenticateUserCommand { Email = user.Email, Password = "right-password" };
+
+        // When
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Then
+        result.Should().BeSameAs(mappedResult);
+        result.Token.Should().Be("a-jwt-token");
+        result.Id.Should().Be(user.Id);
+        result.Phone.Should().Be(user.Phone);
     }
 }
