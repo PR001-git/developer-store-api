@@ -1,4 +1,4 @@
-[Back to README](./challenge.md)
+[Back to challenge](./challenge.md)
 
 ## General API Definitions
 
