@@ -5,7 +5,7 @@ dotnet tool install --global coverlet.console
 dotnet tool install --global dotnet-reportgenerator-globaltool
 
 echo "Clean and build solution"
-dotnet restore
+dotnet restore Ambev.DeveloperEvaluation.sln
 dotnet build  Ambev.DeveloperEvaluation.sln --configuration Release --no-restore
 
 echo "Run tests with coverage"
@@ -26,4 +26,3 @@ rm -rf bin obj
 
 echo ""
 echo "Coverage report generated at TestResults/CoverageReport/index.html"
-pause

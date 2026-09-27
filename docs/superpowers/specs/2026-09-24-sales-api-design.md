@@ -2,7 +2,7 @@
 
 - **Date:** 2026-09-24
 - **Status:** Design approved in brainstorming; written spec pending review
-- **Challenge:** Ambev DeveloperStore developer evaluation — `README.md` today, `.doc/challenge.md` after the restructure (§9.1)
+- **Challenge:** Ambev DeveloperStore developer evaluation — `.doc/challenge.md` (§9.1)
 
 ## 1. Goal
 
@@ -391,7 +391,7 @@ The Users and Auth controllers stop returning raw FluentValidation lists. They t
 - `Sale` has the global query filter `!IsDeleted`. `ExistsBySaleNumberAsync` and the number generator call `IgnoreQueryFilters()`.
 - `SaleItem` has no filter of its own, because items are only ever loaded through their sale. EF Core's warning about this (`PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning`) is ignored in `DefaultContext`, with a comment explaining why.
 - **Concurrency:** a shadow `uint` property marked `IsRowVersion()`, which Npgsql maps to `xmin`; the domain stays persistence-agnostic. Every mutation writes the `Sales` row (`UpdatedAt` at least), so item-only changes are covered too.
-- **Unique-index violation** (SQLSTATE `23505`) on `SaleNumber`: the repository translates it into a `DomainException`, which becomes a 409.
+- **Unique-index violation** (SQLSTATE `23505`) on `SaleNumber`: for a client-sent number, the repository translates it into a `DomainException`, which becomes a 409; for a generated number, it retries generation instead (§8.3).
 - **Listing:**
   - `AsNoTracking()` and `AsSplitQuery()`
   - paging in SQL (`COUNT` plus `Skip`/`Take`)
@@ -406,7 +406,7 @@ The Users and Auth controllers stop returning raw FluentValidation lists. They t
 3. If any sale, deleted ones included, already has that number, go back to step 1.
 4. Return the candidate.
 
-The unique index stays the final guard against a race with a client-sent number.
+The unique index stays the final guard against a race between two generated numbers or against a client-sent number. If the insert hits the unique-index violation (SQLSTATE `23505`) for a number the generator produced, the repository catches it and retries generation, up to 3 attempts, instead of failing the request. A violation on a client-sent `SaleNumber` still returns 409 ("sale number exists") immediately, without retrying.
 
 ## 9. Infrastructure and template fixes
 

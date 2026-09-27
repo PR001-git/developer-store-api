@@ -23,6 +23,13 @@
 **/values.dev.yaml
 LICENSE
 README.md
+.claude
+.doc
+docs
+.slopwatch
+TestResults
+coverage-report.sh
+coverage-report.bat
 !**/.gitignore
 !.git/HEAD
 !.git/config
