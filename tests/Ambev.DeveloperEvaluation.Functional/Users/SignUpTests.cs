@@ -42,4 +42,23 @@ public sealed class SignUpTests
         var id = (await response.ReadDataAsync()).GetProperty("id").GetGuid();
         response.Headers.Location!.ToString().Should().EndWith($"/api/Users/{id}");
     }
+
+    /// <summary>
+    /// Tests that the sign-up response shows what was saved, not just the id.
+    /// </summary>
+    [Fact(DisplayName = "Given a valid sign-up request When signing up Then the response shows the saved user, with the username as name")]
+    public async Task Given_ValidSignUpRequest_When_SigningUp_Then_ResponseShowsSavedUser()
+    {
+        // Given
+        using var client = _api.CreateClient();
+        var request = SignUpRequestTestData.GenerateValid();
+
+        // When
+        using var response = await client.PostAsJsonAsync("/api/users", request);
+
+        // Then
+        var id = (await response.ReadDataAsync()).GetProperty("id").GetGuid();
+        (await response.Content.ReadAsStringAsync()).Should().Be(
+            $$$"""{"success":true,"message":"User created successfully","data":{"id":"{{{id}}}","name":"{{{request.Username}}}","email":"{{{request.Email}}}","phone":"{{{request.Phone}}}","role":"Admin","status":"Active"}}""");
+    }
 }
