@@ -40,6 +40,6 @@ public sealed class GetUserTests
         // Then
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync()).Should().Be(
-            $$$"""{"success":true,"message":"User retrieved successfully","data":{"id":"{{{id}}}","name":"{{{request.Username}}}","email":"{{{request.Email}}}","phone":"{{{request.Phone}}}","role":"Admin","status":"Active"}}""");
+            $$$"""{"success":true,"message":"User retrieved successfully","data":{"id":"{{{id}}}","name":"{{{request.Username}}}","email":"{{{request.Email}}}","phone":"{{{request.Phone}}}","role":"Customer","status":"Active"}}""");
     }
 }

@@ -11,9 +11,9 @@ public static class SignUpRequestTestData
     /// Generates a valid sign-up request. The email is unique on every call, so tests that share the database never collide.
     /// </summary>
     /// <param name="status">The account status to send.</param>
-    /// <param name="role">The role to send.</param>
+    /// <param name="role">The role to send. Public sign-up only accepts Customer.</param>
     /// <returns>A valid <see cref="SignUpRequest"/>.</returns>
-    public static SignUpRequest GenerateValid(string status = "Active", string role = "Admin")
+    public static SignUpRequest GenerateValid(string status = "Active", string role = "Customer")
     {
         var faker = new Faker();
         return new SignUpRequest(

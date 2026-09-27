@@ -19,7 +19,8 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
     /// - Password: Must meet security requirements (using PasswordValidator)
     /// - Phone: Must match international format (+X XXXXXXXXXX)
     /// - Status: Cannot be Unknown, and must be a defined UserStatus value
-    /// - Role: Cannot be None, and must be a defined UserRole value
+    /// - Role: public sign-up can only create Customer accounts; Admin and Manager are privileged roles
+    ///   and must be granted some other way
     /// </remarks>
     public CreateUserRequestValidator()
     {
@@ -28,6 +29,7 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
         RuleFor(user => user.Password).SetValidator(new PasswordValidator());
         RuleFor(user => user.Phone).Matches(@"^\+?[1-9]\d{1,14}$");
         RuleFor(user => user.Status).NotEqual(UserStatus.Unknown).IsInEnum();
-        RuleFor(user => user.Role).NotEqual(UserRole.None).IsInEnum();
+        RuleFor(user => user.Role).IsInEnum()
+            .Equal(UserRole.Customer).WithMessage("Public sign-up can only create Customer accounts.");
     }
 }

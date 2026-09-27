@@ -8,20 +8,21 @@
 # and the login still works.
 
 @baseUrl = http://localhost:8080
-@email = admin@developerstore.com
-@password = Admin@123
+@email = customer@developerstore.com
+@password = Customer@123
 
-### Sign up an active admin (201 the first time, 409 afterwards)
+### Sign up an active customer (201 the first time, 409 afterwards)
+# Public sign-up only ever creates Customer accounts: Admin and Manager are rejected as a validation error.
 POST {{baseUrl}}/api/users
 Content-Type: application/json
 
 {
-  "username": "admin",
+  "username": "customer",
   "password": "{{password}}",
   "phone": "+5511999999999",
   "email": "{{email}}",
   "status": "Active",
-  "role": "Admin"
+  "role": "Customer"
 }
 
 ### Log in: the JWT comes back at data.token

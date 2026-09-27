@@ -19,7 +19,7 @@ public static class CreateUserHandlerTestData
     /// - Email (valid format)
     /// - Phone (Brazilian format)
     /// - Status (Active or Suspended)
-    /// - Role (Customer or Admin)
+    /// - Role (always Customer: public sign-up cannot self-assign a privileged role)
     /// </summary>
     private static readonly Faker<CreateUserCommand> createUserHandlerFaker = new Faker<CreateUserCommand>()
         .RuleFor(u => u.Username, f => f.Internet.UserName())
@@ -27,7 +27,7 @@ public static class CreateUserHandlerTestData
         .RuleFor(u => u.Email, f => f.Internet.Email())
         .RuleFor(u => u.Phone, f => $"+55{f.Random.Number(11, 99)}{f.Random.Number(100000000, 999999999)}")
         .RuleFor(u => u.Status, f => f.PickRandom(UserStatus.Active, UserStatus.Suspended))
-        .RuleFor(u => u.Role, f => f.PickRandom(UserRole.Customer, UserRole.Admin));
+        .RuleFor(u => u.Role, UserRole.Customer);
 
     /// <summary>
     /// Generates a valid User entity with randomized data.

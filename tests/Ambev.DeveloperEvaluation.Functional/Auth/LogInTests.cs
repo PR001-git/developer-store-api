@@ -43,7 +43,7 @@ public sealed class LogInTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var token = (await response.ReadDataAsync()).GetProperty("token").GetString();
         (await response.Content.ReadAsStringAsync()).Should().Be(
-            $$$"""{"success":true,"message":"User authenticated successfully","data":{"token":"{{{token}}}","email":"{{{user.Email}}}","name":"{{{user.Username}}}","role":"Admin"}}""");
+            $$$"""{"success":true,"message":"User authenticated successfully","data":{"token":"{{{token}}}","email":"{{{user.Email}}}","name":"{{{user.Username}}}","role":"Customer"}}""");
         new JwtSecurityTokenHandler().ReadJwtToken(token!).Claims
             .Should().Contain(claim => claim.Type == "nameid" && claim.Value == id.ToString());
     }

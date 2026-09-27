@@ -28,12 +28,12 @@ public sealed class SignUpTests
     /// <summary>
     /// Tests that the API accepts the status and role written as strings, as the spec's JSON contract says.
     /// </summary>
-    [Fact(DisplayName = "Given status Active and role Admin as strings When signing up Then returns 201 pointing at the new user")]
+    [Fact(DisplayName = "Given status Active and role Customer as strings When signing up Then returns 201 pointing at the new user")]
     public async Task Given_StatusAndRoleAsStrings_When_SigningUp_Then_Returns201AtNewUser()
     {
         // Given
         using var client = _api.CreateClient();
-        var request = SignUpRequestTestData.GenerateValid(status: "Active", role: "Admin");
+        var request = SignUpRequestTestData.GenerateValid(status: "Active", role: "Customer");
 
         // When
         using var response = await client.PostAsJsonAsync("/api/users", request);
@@ -60,7 +60,29 @@ public sealed class SignUpTests
         // Then
         var id = (await response.ReadDataAsync()).GetProperty("id").GetGuid();
         (await response.Content.ReadAsStringAsync()).Should().Be(
-            $$$"""{"success":true,"message":"User created successfully","data":{"id":"{{{id}}}","name":"{{{request.Username}}}","email":"{{{request.Email}}}","phone":"{{{request.Phone}}}","role":"Admin","status":"Active"}}""");
+            $$$"""{"success":true,"message":"User created successfully","data":{"id":"{{{id}}}","name":"{{{request.Username}}}","email":"{{{request.Email}}}","phone":"{{{request.Phone}}}","role":"Customer","status":"Active"}}""");
+    }
+
+    /// <summary>
+    /// Tests that public sign-up can't self-assign a privileged role: only Customer is accepted.
+    /// </summary>
+    /// <param name="role">A privileged role a client might try to self-assign.</param>
+    [Theory(DisplayName = "Given a privileged role When signing up Then returns 400 ValidationError")]
+    [InlineData("Admin")]
+    [InlineData("Manager")]
+    public async Task Given_PrivilegedRole_When_SigningUp_Then_Returns400ValidationError(string role)
+    {
+        // Given
+        using var client = _api.CreateClient();
+        var request = SignUpRequestTestData.GenerateValid(role: role);
+
+        // When
+        using var response = await client.PostAsJsonAsync("/api/users", request);
+
+        // Then
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        document.RootElement.GetProperty("type").GetString().Should().Be("ValidationError");
     }
 
     /// <summary>
