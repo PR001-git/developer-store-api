@@ -24,9 +24,17 @@ public sealed class SaleItem : BaseEntity
     /// <param name="product">The product sold.</param>
     /// <param name="quantity">The quantity of identical items, from 1 to 20.</param>
     /// <param name="unitPrice">The price of one item.</param>
-    /// <exception cref="DomainException">Thrown when the quantity is outside 1 to 20.</exception>
+    /// <exception cref="DomainException">
+    /// Thrown when the quantity is outside 1 to 20, or the unit price isn't above 0 with at most 2 decimal places.
+    /// </exception>
     internal SaleItem(ExternalIdentity product, int quantity, decimal unitPrice)
     {
+        if (unitPrice <= 0)
+            throw new DomainException("Unit price must be greater than zero");
+
+        if (decimal.Round(unitPrice, 2) != unitPrice)
+            throw new DomainException("Unit price must have at most 2 decimal places");
+
         Id = Guid.NewGuid();
         Product = product;
         Quantity = quantity;

@@ -1,4 +1,5 @@
 using Ambev.DeveloperEvaluation.Domain.Common;
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.ValueObjects;
 
 namespace Ambev.DeveloperEvaluation.Domain.Entities;
@@ -16,6 +17,16 @@ public sealed class Sale : BaseEntity
     /// The maximum length of <see cref="SaleNumber"/>, after trimming.
     /// </summary>
     public const int SaleNumberMaxLength = 50;
+
+    /// <summary>
+    /// The message for a sale without lines (rule R5).
+    /// </summary>
+    public const string NoItemsMessage = "A sale must have at least one item";
+
+    /// <summary>
+    /// The message for a product that appears in more than one line (rule R4).
+    /// </summary>
+    public const string RepeatedProductMessage = "Each product can appear only once in a sale";
 
     private readonly List<SaleItem> _items = [];
 
@@ -85,12 +96,16 @@ public sealed class Sale : BaseEntity
     /// Creates a sale with a new id. Each line gets its discount (rule R1) and amounts (rule R3),
     /// and the sale total is the sum of the line totals.
     /// </summary>
-    /// <param name="saleNumber">The sale number.</param>
+    /// <param name="saleNumber">The sale number. Trimmed, it must have 1 to 50 characters.</param>
     /// <param name="saleDate">The date and time of the sale. A value without a kind is read as UTC; a local one is converted (rule R13).</param>
     /// <param name="customer">The customer who bought.</param>
     /// <param name="branch">The branch where the sale was made.</param>
-    /// <param name="items">The lines of the sale.</param>
+    /// <param name="items">The lines of the sale: at least one, and one per product.</param>
     /// <returns>The new sale.</returns>
+    /// <exception cref="DomainException">
+    /// Thrown when the sale number is missing or too long, there are no lines, a product repeats,
+    /// or a line has a quantity outside 1 to 20 or an invalid unit price.
+    /// </exception>
     public static Sale Create(
         string saleNumber,
         DateTime saleDate,
@@ -98,10 +113,16 @@ public sealed class Sale : BaseEntity
         ExternalIdentity branch,
         IReadOnlyCollection<SaleItemData> items)
     {
+        var trimmedSaleNumber = saleNumber?.Trim() ?? string.Empty;
+        if (trimmedSaleNumber.Length is 0 or > SaleNumberMaxLength)
+            throw new DomainException($"Sale number must have 1 to {SaleNumberMaxLength} characters");
+
+        EnsureValidLines(items);
+
         var sale = new Sale
         {
             Id = Guid.NewGuid(),
-            SaleNumber = saleNumber,
+            SaleNumber = trimmedSaleNumber,
             SaleDate = ToUtc(saleDate),
             Customer = customer,
             Branch = branch,
@@ -112,6 +133,15 @@ public sealed class Sale : BaseEntity
         sale.RecalculateTotal();
 
         return sale;
+    }
+
+    private static void EnsureValidLines(IReadOnlyCollection<SaleItemData> items)
+    {
+        if (items.Count == 0)
+            throw new DomainException(NoItemsMessage);
+
+        if (items.DistinctBy(item => item.Product.Id).Count() != items.Count)
+            throw new DomainException(RepeatedProductMessage);
     }
 
     private void RecalculateTotal() =>
