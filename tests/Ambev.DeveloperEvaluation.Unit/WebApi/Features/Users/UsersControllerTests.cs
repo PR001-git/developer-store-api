@@ -7,6 +7,7 @@ using Ambev.DeveloperEvaluation.WebApi.Features.Users.CreateUser;
 using Ambev.DeveloperEvaluation.WebApi.Features.Users.GetUser;
 using AutoMapper;
 using FluentAssertions;
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
@@ -29,6 +30,25 @@ public sealed class UsersControllerTests
     public UsersControllerTests()
     {
         _controller = new UsersController(_mediator, _mapper);
+    }
+
+    /// <summary>
+    /// Tests that an invalid sign-up request throws <see cref="ValidationException"/> instead of returning a raw error list.
+    /// </summary>
+    [Fact(DisplayName = "Given an invalid sign-up request When creating a user Then it throws ValidationException and sends no command")]
+    public async Task Given_InvalidSignUpRequest_When_CreatingUser_Then_ThrowsValidationException()
+    {
+        // Given
+        var request = UserRequestTestData.GenerateValidCreateUserRequest();
+        request.Email = "not-an-email";
+
+        // When
+        var act = () => _controller.CreateUser(request, CancellationToken.None);
+
+        // Then
+        var thrown = await act.Should().ThrowAsync<ValidationException>();
+        thrown.Which.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("The provided email address is not valid.");
+        _mediator.ReceivedCalls().Should().BeEmpty();
     }
 
     /// <summary>
@@ -59,6 +79,21 @@ public sealed class UsersControllerTests
     }
 
     /// <summary>
+    /// Tests that an empty user id throws <see cref="ValidationException"/> instead of returning a raw error list.
+    /// </summary>
+    [Fact(DisplayName = "Given an empty user id When getting a user Then it throws ValidationException and sends no command")]
+    public async Task Given_EmptyUserId_When_GettingUser_Then_ThrowsValidationException()
+    {
+        // When
+        var act = () => _controller.GetUser(Guid.Empty, CancellationToken.None);
+
+        // Then
+        var thrown = await act.Should().ThrowAsync<ValidationException>();
+        thrown.Which.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("User ID is required");
+        _mediator.ReceivedCalls().Should().BeEmpty();
+    }
+
+    /// <summary>
     /// Tests that getting a user returns 200 with the envelope built once.
     /// </summary>
     [Fact(DisplayName = "Given an existing user id When getting a user Then it returns 200 with {success, message, data}")]
@@ -81,6 +116,21 @@ public sealed class UsersControllerTests
         body.EnumerateObject().Select(property => property.Name).Should().Equal("success", "message", "data");
         body.GetProperty("message").GetString().Should().Be("User retrieved successfully");
         body.GetProperty("data").GetProperty("id").GetGuid().Should().Be(id);
+    }
+
+    /// <summary>
+    /// Tests that an empty user id throws <see cref="ValidationException"/> instead of returning a raw error list.
+    /// </summary>
+    [Fact(DisplayName = "Given an empty user id When deleting a user Then it throws ValidationException and sends no command")]
+    public async Task Given_EmptyUserId_When_DeletingUser_Then_ThrowsValidationException()
+    {
+        // When
+        var act = () => _controller.DeleteUser(Guid.Empty, CancellationToken.None);
+
+        // Then
+        var thrown = await act.Should().ThrowAsync<ValidationException>();
+        thrown.Which.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be("User ID is required");
+        _mediator.ReceivedCalls().Should().BeEmpty();
     }
 
     /// <summary>

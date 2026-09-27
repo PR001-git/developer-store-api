@@ -4,6 +4,7 @@ using Ambev.DeveloperEvaluation.WebApi.Features.Auth;
 using Ambev.DeveloperEvaluation.WebApi.Features.Auth.AuthenticateUserFeature;
 using AutoMapper;
 using FluentAssertions;
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
@@ -26,6 +27,24 @@ public sealed class AuthControllerTests
     public AuthControllerTests()
     {
         _controller = new AuthController(_mediator, _mapper);
+    }
+
+    /// <summary>
+    /// Tests that an invalid login request throws <see cref="ValidationException"/> instead of returning a raw error list.
+    /// </summary>
+    [Fact(DisplayName = "Given an invalid login request When authenticating Then it throws ValidationException and sends no command")]
+    public async Task Given_InvalidLoginRequest_When_Authenticating_Then_ThrowsValidationException()
+    {
+        // Given
+        var request = new AuthenticateUserRequest { Email = "not-an-email", Password = string.Empty };
+
+        // When
+        var act = () => _controller.AuthenticateUser(request, CancellationToken.None);
+
+        // Then
+        var thrown = await act.Should().ThrowAsync<ValidationException>();
+        thrown.Which.Errors.Select(failure => failure.ErrorMessage).Should().Equal("Invalid email format", "Password is required");
+        _mediator.ReceivedCalls().Should().BeEmpty();
     }
 
     /// <summary>
