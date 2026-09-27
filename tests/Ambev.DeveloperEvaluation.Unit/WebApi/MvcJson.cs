@@ -1,17 +1,20 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Ambev.DeveloperEvaluation.Unit.WebApi;
 
 /// <summary>
-/// Serializes values the way the API's MVC JSON output does: web defaults (camelCase) and relaxed escaping.
+/// Serializes values the way the API's MVC JSON output does: web defaults (camelCase), relaxed escaping
+/// and enums as strings.
 /// Tests use it to compare the exact body an action result would produce.
 /// </summary>
 internal static class MvcJson
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     /// <summary>
