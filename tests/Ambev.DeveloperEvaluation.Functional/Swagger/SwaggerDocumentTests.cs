@@ -24,10 +24,10 @@ public sealed class SwaggerDocumentTests
     }
 
     /// <summary>
-    /// Tests that the document declares the JWT Bearer scheme and applies it to every operation,
-    /// which is what makes Swagger UI's Authorize button send the token.
+    /// Tests that the document declares the JWT Bearer scheme, which is what makes Swagger UI's Authorize
+    /// button send the token.
     /// </summary>
-    [Fact(DisplayName = "Given the API in Development When reading the Swagger document Then it declares a JWT Bearer scheme that every operation uses")]
+    [Fact(DisplayName = "Given the API in Development When reading the Swagger document Then it declares a JWT Bearer scheme")]
     public async Task Given_ApiInDevelopment_When_ReadingSwaggerDocument_Then_DeclaresJwtBearerScheme()
     {
         // Given
@@ -44,6 +44,30 @@ public sealed class SwaggerDocumentTests
             .Should().BeTrue("the document must declare the Bearer scheme");
         JsonSerializer.Serialize(schemes).Should().Be(
             """{"Bearer":{"type":"http","description":"Paste the token from POST /api/auth (data.token), without the Bearer prefix.","scheme":"bearer","bearerFormat":"JWT"}}""");
-        JsonSerializer.Serialize(root.GetProperty("security")).Should().Be("""[{"Bearer":[]}]""");
+    }
+
+    /// <summary>
+    /// Tests that no operation is marked Bearer-protected while no controller has [Authorize] yet. The scheme is
+    /// declared so Swagger UI's Authorize button exists, but nothing should show the lock icon until an endpoint
+    /// actually requires a token.
+    /// </summary>
+    [Fact(DisplayName = "Given no controller has [Authorize] When reading the Swagger document Then no operation requires the Bearer scheme")]
+    public async Task Given_NoControllerHasAuthorize_When_ReadingSwaggerDocument_Then_NoOperationRequiresBearerScheme()
+    {
+        // Given
+        using var client = _api.CreateClient();
+
+        // When
+        using var response = await client.GetAsync("/swagger/v1/swagger.json");
+
+        // Then
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        root.TryGetProperty("security", out _).Should().BeFalse("no global security requirement should be declared");
+
+        foreach (var path in root.GetProperty("paths").EnumerateObject())
+        foreach (var operation in path.Value.EnumerateObject())
+            operation.Value.TryGetProperty("security", out _).Should().BeFalse(
+                $"{path.Name} {operation.Name} has no [Authorize], so it should carry no security requirement");
     }
 }
