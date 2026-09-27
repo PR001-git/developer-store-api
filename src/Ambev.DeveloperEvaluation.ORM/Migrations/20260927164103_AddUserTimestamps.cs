@@ -16,7 +16,7 @@ namespace Ambev.DeveloperEvaluation.ORM.Migrations
                 table: "Users",
                 type: "timestamp with time zone",
                 nullable: false,
-                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+                defaultValueSql: "now()");
 
             migrationBuilder.AddColumn<DateTime>(
                 name: "UpdatedAt",
