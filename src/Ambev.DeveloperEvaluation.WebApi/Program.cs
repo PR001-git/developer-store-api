@@ -54,7 +54,7 @@ public class Program
 
             var app = builder.Build();
 
-            if (app.Environment.IsDevelopment())
+            if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
             {
                 using var scope = app.Services.CreateScope();
                 scope.ServiceProvider.GetRequiredService<DefaultContext>().Database.Migrate();
