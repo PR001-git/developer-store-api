@@ -10,12 +10,12 @@ public sealed class DataResetFixture : IAsyncLifetime
     /// <summary>
     /// The tables the tests write to. Add a table here when a migration creates one.
     /// </summary>
-    public static readonly IReadOnlyCollection<string> Tables = ["Users"];
+    public static readonly IReadOnlyCollection<string> Tables = ["Users", "Sales", "SaleItems"];
 
     /// <summary>
     /// The sequences the tests advance. Add a sequence here when a migration creates one.
     /// </summary>
-    public static readonly IReadOnlyCollection<string> Sequences = [];
+    public static readonly IReadOnlyCollection<string> Sequences = ["sale_number_seq"];
 
     private readonly ApiFixture _api;
 
