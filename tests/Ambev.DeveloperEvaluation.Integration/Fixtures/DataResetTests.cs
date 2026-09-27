@@ -1,4 +1,6 @@
+using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Integration.TestData;
+using Ambev.DeveloperEvaluation.ORM.Mapping;
 using Ambev.DeveloperEvaluation.ORM.Repositories;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +15,8 @@ namespace Ambev.DeveloperEvaluation.Integration.Fixtures;
 [Collection(DatabaseCollection.Name)]
 public sealed class DataResetTests
 {
+    private const string SaleNumberSequence = SaleConfiguration.SaleNumberSequence;
+
     private readonly PostgreSqlFixture _database;
 
     /// <summary>
@@ -45,29 +49,40 @@ public sealed class DataResetTests
     }
 
     /// <summary>
-    /// Tests that the reset restarts the listed sequences. The test creates and drops its own sequence,
-    /// because no migration creates one yet.
+    /// Tests that the reset empties the Sales tables too, items included.
     /// </summary>
-    [Fact(DisplayName = "Given an advanced sequence When the data is reset Then the sequence starts over at 1")]
-    public async Task Given_AdvancedSequence_When_DataIsReset_Then_SequenceStartsOverAtOne()
+    [Fact(DisplayName = "Given a saved sale When the data is reset Then the Sales and SaleItems tables are empty")]
+    public async Task Given_SavedSale_When_DataIsReset_Then_SalesTablesAreEmpty()
     {
         // Given
-        const string sequence = "reset_probe_seq";
-        await ExecuteAsync($"CREATE SEQUENCE {sequence};");
-        await ExecuteAsync($"SELECT nextval('{sequence}'); SELECT nextval('{sequence}');");
-
-        try
+        await using (var context = _database.CreateContext())
         {
-            // When
-            await _database.ResetDataAsync([], [sequence]);
+            await new SaleRepository(context).CreateAsync(SaleTestData.GenerateValidSale());
+        }
 
-            // Then
-            (await NextValueAsync(sequence)).Should().Be(1);
-        }
-        finally
-        {
-            await ExecuteAsync($"DROP SEQUENCE {sequence};");
-        }
+        // When
+        await _database.ResetDataAsync(DataResetFixture.Tables, DataResetFixture.Sequences);
+
+        // Then
+        await using var readContext = _database.CreateContext();
+        (await readContext.Sales.CountAsync()).Should().Be(0);
+        (await readContext.Set<SaleItem>().CountAsync()).Should().Be(0);
+    }
+
+    /// <summary>
+    /// Tests that the reset restarts the listed sequences, so sale numbers start over in every test class.
+    /// </summary>
+    [Fact(DisplayName = "Given an advanced sale_number_seq When the data is reset Then the sequence starts over at 1")]
+    public async Task Given_AdvancedSaleNumberSequence_When_DataIsReset_Then_SequenceStartsOverAtOne()
+    {
+        // Given
+        await ExecuteAsync($"SELECT nextval('{SaleNumberSequence}'); SELECT nextval('{SaleNumberSequence}');");
+
+        // When
+        await _database.ResetDataAsync(DataResetFixture.Tables, DataResetFixture.Sequences);
+
+        // Then
+        (await NextValueAsync(SaleNumberSequence)).Should().Be(1);
     }
 
     private async Task ExecuteAsync(string sql)

@@ -38,3 +38,30 @@ Content-Type: application/json
 ###
 # The JWT from the login above. Requests that need it send the header "Authorization: Bearer" plus this token.
 @token = {{login.response.body.$.data.token}}
+
+### Create a sale: 5 identical items get 10%, which the API computes (201 with the sale)
+# The sale number is random, so the file can be re-run.
+# @name createSale
+POST {{baseUrl}}/api/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleNumber": "S-{{$randomInt 100000 999999}}",
+  "saleDate": "2026-09-24T14:30:00Z",
+  "customerId": "3f2b8c1e-1111-4a5b-9c2d-000000000001",
+  "customerName": "Maria Silva",
+  "branchId": "3f2b8c1e-2222-4a5b-9c2d-000000000002",
+  "branchName": "Filial Centro",
+  "items": [
+    { "productId": "3f2b8c1e-3333-4a5b-9c2d-000000000003", "productName": "Cerveja 350ml", "quantity": 5, "unitPrice": 4.50 }
+  ]
+}
+
+###
+# The id of the sale created above.
+@saleId = {{createSale.response.body.$.data.id}}
+
+### Get the sale back (200 with the same sale)
+GET {{baseUrl}}/api/sales/{{saleId}}
+Authorization: Bearer {{token}}

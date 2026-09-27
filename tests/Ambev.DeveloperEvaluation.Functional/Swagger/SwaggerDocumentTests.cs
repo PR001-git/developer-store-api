@@ -47,12 +47,11 @@ public sealed class SwaggerDocumentTests
     }
 
     /// <summary>
-    /// Tests that no operation is marked Bearer-protected while no controller has [Authorize] yet. The scheme is
-    /// declared so Swagger UI's Authorize button exists, but nothing should show the lock icon until an endpoint
-    /// actually requires a token.
+    /// Tests that only the operations of a controller with [Authorize] are marked Bearer-protected. The scheme is
+    /// declared so Swagger UI's Authorize button exists, but only a protected endpoint should show the lock icon.
     /// </summary>
-    [Fact(DisplayName = "Given no controller has [Authorize] When reading the Swagger document Then no operation requires the Bearer scheme")]
-    public async Task Given_NoControllerHasAuthorize_When_ReadingSwaggerDocument_Then_NoOperationRequiresBearerScheme()
+    [Fact(DisplayName = "Given only Sales has [Authorize] When reading the Swagger document Then only its operations require the Bearer scheme")]
+    public async Task Given_OnlySalesHasAuthorize_When_ReadingSwaggerDocument_Then_OnlyItsOperationsRequireBearerScheme()
     {
         // Given
         using var client = _api.CreateClient();
@@ -66,8 +65,11 @@ public sealed class SwaggerDocumentTests
         root.TryGetProperty("security", out _).Should().BeFalse("no global security requirement should be declared");
 
         foreach (var path in root.GetProperty("paths").EnumerateObject())
-        foreach (var operation in path.Value.EnumerateObject())
-            operation.Value.TryGetProperty("security", out _).Should().BeFalse(
-                $"{path.Name} {operation.Name} has no [Authorize], so it should carry no security requirement");
+        {
+            var requiresBearer = path.Name.StartsWith("/api/sales", StringComparison.Ordinal);
+            foreach (var operation in path.Value.EnumerateObject())
+                operation.Value.TryGetProperty("security", out _).Should().Be(requiresBearer,
+                    $"{path.Name} {operation.Name} {(requiresBearer ? "has [Authorize]" : "has no [Authorize]")}");
+        }
     }
 }
