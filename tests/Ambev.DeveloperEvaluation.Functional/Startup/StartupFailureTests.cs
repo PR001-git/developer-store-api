@@ -31,6 +31,8 @@ public sealed class StartupFailureTests
         var start = () => misconfigured.CreateClient();
 
         // Then
-        start.Should().Throw<ArgumentException>().WithParameterName("secretKey");
+        // The message tells this error apart from WebApplicationFactory's own InvalidOperationException,
+        // "The entry point exited without ever building an IHost", which is what a swallowed exception gives.
+        start.Should().Throw<InvalidOperationException>().WithMessage("Configuration setting 'Jwt:SecretKey' is missing or empty.*");
     }
 }

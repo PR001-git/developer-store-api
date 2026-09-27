@@ -13,10 +13,7 @@ namespace Ambev.DeveloperEvaluation.Common.Security
         {
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
-            var secretKey = configuration["Jwt:SecretKey"]?.ToString();
-            ArgumentException.ThrowIfNullOrWhiteSpace(secretKey);
-
-            var key = Encoding.ASCII.GetBytes(secretKey);
+            var key = Encoding.ASCII.GetBytes(JwtSecretKey.Read(configuration));
 
             services.AddAuthentication(x =>
             {
