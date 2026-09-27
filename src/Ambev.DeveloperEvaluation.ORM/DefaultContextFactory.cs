@@ -8,8 +8,9 @@ namespace Ambev.DeveloperEvaluation.ORM;
 /// Creates the <see cref="DefaultContext"/> that the EF Core tools (<c>dotnet ef</c>) use at design time.
 /// </summary>
 /// <remarks>
-/// Reads <c>ConnectionStrings:DefaultConnection</c> from the <c>appsettings.json</c> in the current directory.
-/// The tools set that directory to the startup project's folder, so run them with
+/// Reads <c>ConnectionStrings:DefaultConnection</c> from the <c>appsettings.json</c> in the current directory,
+/// then from environment variables, so a connection string set that way overrides the file. The tools set that
+/// directory to the startup project's folder, so run them with
 /// <c>--startup-project src/Ambev.DeveloperEvaluation.WebApi</c>.
 /// </remarks>
 public sealed class DefaultContextFactory : IDesignTimeDbContextFactory<DefaultContext>
@@ -24,6 +25,7 @@ public sealed class DefaultContextFactory : IDesignTimeDbContextFactory<DefaultC
         IConfigurationRoot configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json")
+            .AddEnvironmentVariables()
             .Build();
 
         var builder = new DbContextOptionsBuilder<DefaultContext>();
