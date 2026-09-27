@@ -69,6 +69,27 @@ public sealed class LogInTests
     }
 
     /// <summary>
+    /// Tests that a wrong password shorter than the sign-up password policy's minimum is still an authentication
+    /// failure, not a 400 that would leak the policy through the login endpoint.
+    /// </summary>
+    [Fact(DisplayName = "Given an active user When logging in with a wrong password shorter than the password policy Then returns 401 AuthenticationError with Invalid credentials")]
+    public async Task Given_ActiveUser_When_LoggingInWithShortWrongPassword_Then_Returns401InvalidCredentials()
+    {
+        // Given
+        using var client = _api.CreateClient();
+        var user = SignUpRequestTestData.GenerateValid();
+        await client.SignUpAsync(user);
+
+        // When
+        using var response = await client.PostAsJsonAsync("/api/auth", new { user.Email, Password = "ab" });
+
+        // Then
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await response.Content.ReadAsStringAsync()).Should().Be(
+            """{"type":"AuthenticationError","error":"Authentication failed","detail":"Invalid credentials"}""");
+    }
+
+    /// <summary>
     /// Tests that an inactive user can't log in, even with the right password.
     /// </summary>
     [Fact(DisplayName = "Given an inactive user When logging in with the right password Then returns 401 AuthenticationError with User is not active")]
