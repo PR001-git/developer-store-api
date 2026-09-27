@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System;
-using System.Text;
 
 namespace Ambev.DeveloperEvaluation.Common.Security
 {
@@ -13,7 +12,7 @@ namespace Ambev.DeveloperEvaluation.Common.Security
         {
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
-            var key = Encoding.ASCII.GetBytes(JwtSecretKey.Read(configuration));
+            var key = JwtSecretKey.ReadBytes(configuration);
 
             services.AddAuthentication(x =>
             {

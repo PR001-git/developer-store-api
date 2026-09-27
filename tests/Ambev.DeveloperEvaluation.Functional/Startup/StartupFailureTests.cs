@@ -35,4 +35,21 @@ public sealed class StartupFailureTests
         // "The entry point exited without ever building an IHost", which is what a swallowed exception gives.
         start.Should().Throw<InvalidOperationException>().WithMessage("Configuration setting 'Jwt:SecretKey' is missing or empty.*");
     }
+
+    /// <summary>
+    /// Tests that a key shorter than 32 bytes stops startup instead of letting every token generation fail later with IDX10720.
+    /// </summary>
+    [Fact(DisplayName = "Given a Jwt:SecretKey shorter than 32 bytes When the API starts Then the startup exception reaches the host")]
+    public void Given_TooShortJwtSecretKey_When_ApiStarts_Then_StartupExceptionReachesHost()
+    {
+        // Given
+        using var factory = new WebApplicationFactory<Program>();
+        using var misconfigured = factory.WithWebHostBuilder(builder => builder.UseSetting("Jwt:SecretKey", "too-short-key"));
+
+        // When
+        var start = () => misconfigured.CreateClient();
+
+        // Then
+        start.Should().Throw<InvalidOperationException>().WithMessage("Configuration setting 'Jwt:SecretKey' is too short.*");
+    }
 }

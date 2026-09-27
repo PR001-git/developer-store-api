@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
 namespace Ambev.DeveloperEvaluation.Common.Security;
 
@@ -39,7 +38,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     public string GenerateToken(IUser user)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(JwtSecretKey.Read(_configuration));
+        var key = JwtSecretKey.ReadBytes(_configuration);
 
         var claims = new[]
         {
