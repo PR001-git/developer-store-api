@@ -19,6 +19,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email).IsRequired().HasMaxLength(100);
         builder.Property(u => u.Phone).HasMaxLength(20);
 
+        // UserRepository stores and looks up emails already trimmed and lower-invariant, so a plain
+        // unique index enforces case-insensitive uniqueness without needing citext or a computed column.
+        builder.HasIndex(u => u.Email).IsUnique();
+
         builder.Property(u => u.Status)
             .HasConversion<string>()
             .HasMaxLength(20);

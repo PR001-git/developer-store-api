@@ -1,6 +1,7 @@
 using Ambev.DeveloperEvaluation.Application.Users.CreateUser;
 using Ambev.DeveloperEvaluation.Common.Security;
 using Ambev.DeveloperEvaluation.Domain.Entities;
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Ambev.DeveloperEvaluation.Unit.Domain;
 using AutoMapper;
@@ -143,5 +144,25 @@ public class CreateUserHandlerTests
             c.Phone == command.Phone &&
             c.Status == command.Status &&
             c.Role == command.Role));
+    }
+
+    /// <summary>
+    /// Tests that signing up with an email that is already taken is rejected as a business rule, before anything is saved.
+    /// </summary>
+    [Fact(DisplayName = "Given an email that already exists When creating user Then throws DomainException and saves nothing")]
+    public async Task Given_ExistingEmail_When_CreatingUser_Then_ThrowsDomainExceptionAndSavesNothing()
+    {
+        // Given
+        var command = CreateUserHandlerTestData.GenerateValidCommand();
+        _userRepository.GetByEmailAsync(command.Email, Arg.Any<CancellationToken>())
+            .Returns(new User { Email = command.Email });
+
+        // When
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        // Then
+        await act.Should().ThrowAsync<DomainException>()
+            .WithMessage($"User with email {command.Email} already exists");
+        await _userRepository.DidNotReceive().CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 }

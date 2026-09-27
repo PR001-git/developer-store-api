@@ -8,6 +8,15 @@ namespace Ambev.DeveloperEvaluation.Common.Security;
 public class BCryptPasswordHasher : IPasswordHasher
 {
     /// <summary>
+    /// A fixed hash, computed once with the same call <see cref="HashPassword"/> uses, so verifying against it
+    /// costs the same as verifying against a real user's hash. The password behind it is never used to sign in.
+    /// </summary>
+    private static readonly string _dummyHash = BCrypt.Net.BCrypt.HashPassword("no-account-ever-uses-this-password");
+
+    /// <inheritdoc />
+    public string DummyHash => _dummyHash;
+
+    /// <summary>
     /// Hashes a plain text password using BCrypt algorithm.
     /// </summary>
     /// <param name="password">The plain text password to hash.</param>

@@ -21,4 +21,11 @@ public interface IPasswordHasher
     /// <param name="hash">The hashed password to compare against.</param>
     /// <returns>True if the password matches the hash, false otherwise.</returns>
     bool VerifyPassword(string password, string hash);
+
+    /// <summary>
+    /// A fixed hash, computed once at the same cost as a real one, for a caller to verify against when there is
+    /// no real user to compare a password with. This keeps an unknown-email login as slow as a known one, so
+    /// the response time doesn't tell an attacker whether the email exists.
+    /// </summary>
+    string DummyHash { get; }
 }

@@ -18,8 +18,9 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
     /// - Username: Required, must be between 3 and 50 characters
     /// - Password: Must meet security requirements (using PasswordValidator)
     /// - Phone: Must match international format (+X XXXXXXXXXX)
-    /// - Status: Cannot be set to Unknown
-    /// - Role: Cannot be set to None
+    /// - Status: Cannot be set to Unknown, and must be a defined UserStatus value
+    /// - Role: public sign-up can only create Customer accounts; Admin and Manager are privileged roles
+    ///   and must be granted some other way
     /// </remarks>
     public CreateUserCommandValidator()
     {
@@ -27,7 +28,8 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
         RuleFor(user => user.Username).NotEmpty().Length(3, 50);
         RuleFor(user => user.Password).SetValidator(new PasswordValidator());
         RuleFor(user => user.Phone).Matches(@"^\+?[1-9]\d{1,14}$");
-        RuleFor(user => user.Status).NotEqual(UserStatus.Unknown);
-        RuleFor(user => user.Role).NotEqual(UserRole.None);
+        RuleFor(user => user.Status).NotEqual(UserStatus.Unknown).IsInEnum();
+        RuleFor(user => user.Role).IsInEnum()
+            .Equal(UserRole.Customer).WithMessage("Public sign-up can only create Customer accounts.");
     }
 }

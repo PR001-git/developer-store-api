@@ -34,7 +34,7 @@ public sealed class ValidationPipelineTests
         await using var provider = BuildPipeline(userRepository);
         using var scope = provider.CreateScope();
         var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
-        var command = new AuthenticateUserCommand { Email = "not-an-email", Password = "123" };
+        var command = new AuthenticateUserCommand { Email = "not-an-email", Password = string.Empty };
 
         // When
         var act = () => mediator.Send(command);

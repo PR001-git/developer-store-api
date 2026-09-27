@@ -1,6 +1,40 @@
-@Ambev.DeveloperEvaluation.WebApi_HostAddress = http://localhost:5119
+# Ambev DeveloperStore API: sign up, log in and keep the JWT for the requests that need it.
+# Send the requests in order: the token variable reads the latest response of the login request.
+#
+# baseUrl is the API started by `docker compose up`. `dotnet run` (the http launch profile)
+# serves it on http://localhost:5119 instead: change baseUrl to that.
+#
+# Safe to re-run: once the user exists, the sign-up returns 409 BusinessRuleViolation
+# and the login still works.
 
-GET {{Ambev.DeveloperEvaluation.WebApi_HostAddress}}/weatherforecast/
-Accept: application/json
+@baseUrl = http://localhost:8080
+@email = customer@developerstore.com
+@password = Customer@123
+
+### Sign up an active customer (201 the first time, 409 afterwards)
+# Public sign-up only ever creates Customer accounts: Admin and Manager are rejected as a validation error.
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+
+{
+  "username": "customer",
+  "password": "{{password}}",
+  "phone": "+5511999999999",
+  "email": "{{email}}",
+  "status": "Active",
+  "role": "Customer"
+}
+
+### Log in: the JWT comes back at data.token
+# @name login
+POST {{baseUrl}}/api/auth
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
 
 ###
+# The JWT from the login above. Requests that need it send the header "Authorization: Bearer" plus this token.
+@token = {{login.response.body.$.data.token}}
