@@ -60,7 +60,7 @@ public class Program
                 scope.ServiceProvider.GetRequiredService<DefaultContext>().Database.Migrate();
             }
 
-            app.UseMiddleware<ValidationExceptionMiddleware>();
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
 
             if (app.Environment.IsDevelopment())
             {
