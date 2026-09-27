@@ -53,6 +53,13 @@ public class Program
             builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
             var app = builder.Build();
+
+            if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+            {
+                using var scope = app.Services.CreateScope();
+                scope.ServiceProvider.GetRequiredService<DefaultContext>().Database.Migrate();
+            }
+
             app.UseMiddleware<ValidationExceptionMiddleware>();
 
             if (app.Environment.IsDevelopment())
@@ -60,8 +67,6 @@ public class Program
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
-            app.UseHttpsRedirection();
 
             app.UseAuthentication();
             app.UseAuthorization();
@@ -72,9 +77,10 @@ public class Program
 
             app.Run();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not HostAbortedException)
         {
             Log.Fatal(ex, "Application terminated unexpectedly");
+            throw;
         }
         finally
         {
