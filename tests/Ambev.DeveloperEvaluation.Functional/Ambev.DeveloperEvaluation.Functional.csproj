@@ -32,4 +32,9 @@
     <ProjectReference Include="..\..\src\Ambev.DeveloperEvaluation.WebApi\Ambev.DeveloperEvaluation.WebApi.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Shared with Integration instead of duplicated; see that file's remarks. -->
+    <Compile Include="..\Ambev.DeveloperEvaluation.Integration\Fixtures\DataReset.cs" Link="Fixtures\DataReset.cs" />
+  </ItemGroup>
+
 </Project>
