@@ -15,7 +15,11 @@ public sealed class CreateSaleCommandValidator : AbstractValidator<CreateSaleCom
     /// </summary>
     public CreateSaleCommandValidator()
     {
-        RuleFor(command => command.SaleNumber).NotEmpty().MaximumTrimmedLength(Sale.SaleNumberMaxLength);
+        // Optional (rule R12): only a sent number is checked. The ! is for the compiler; the rule is still named SaleNumber.
+        RuleFor(command => command.SaleNumber!)
+            .NotEmpty()
+            .MaximumTrimmedLength(Sale.SaleNumberMaxLength)
+            .When(command => command.SaleNumber is not null);
         RuleFor(command => command.SaleDate).NotEmpty();
         RuleFor(command => command.CustomerId).NotEmpty();
         RuleFor(command => command.CustomerName).NotEmpty().MaximumTrimmedLength(ExternalIdentity.NameMaxLength);

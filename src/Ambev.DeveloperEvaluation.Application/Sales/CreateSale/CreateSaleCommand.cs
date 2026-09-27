@@ -11,9 +11,10 @@ namespace Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 public sealed class CreateSaleCommand : IRequest<SaleResult>
 {
     /// <summary>
-    /// Gets or sets the sale number. Trimmed, it must have 1 to 50 characters.
+    /// Gets or sets the sale number, or <c>null</c> for the handler to generate one (rule R12).
+    /// A sent number, trimmed, must have 1 to 50 characters and belong to no other sale.
     /// </summary>
-    public string SaleNumber { get; set; } = string.Empty;
+    public string? SaleNumber { get; set; }
 
     /// <summary>
     /// Gets or sets the date and time of the sale. A value without an offset is read as UTC.

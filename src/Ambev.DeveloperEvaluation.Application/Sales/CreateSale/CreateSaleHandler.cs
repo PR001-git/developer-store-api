@@ -1,5 +1,7 @@
 using Ambev.DeveloperEvaluation.Domain.Entities;
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
+using Ambev.DeveloperEvaluation.Domain.Services;
 using Ambev.DeveloperEvaluation.Domain.ValueObjects;
 using AutoMapper;
 using MediatR;
@@ -7,12 +9,13 @@ using MediatR;
 namespace Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 
 /// <summary>
-/// Handles <see cref="CreateSaleCommand"/>: the domain builds the sale, the repository saves it,
-/// and only then are the recorded events published.
+/// Handles <see cref="CreateSaleCommand"/>: it settles the sale number (generated when omitted, checked when sent),
+/// the domain builds the sale, the repository saves it, and only then are the recorded events published.
 /// </summary>
 public sealed class CreateSaleHandler : IRequestHandler<CreateSaleCommand, SaleResult>
 {
     private readonly ISaleRepository _saleRepository;
+    private readonly ISaleNumberGenerator _saleNumberGenerator;
     private readonly IPublisher _publisher;
     private readonly IMapper _mapper;
 
@@ -20,11 +23,17 @@ public sealed class CreateSaleHandler : IRequestHandler<CreateSaleCommand, SaleR
     /// Initializes a new instance of the <see cref="CreateSaleHandler"/> class.
     /// </summary>
     /// <param name="saleRepository">The sale repository.</param>
+    /// <param name="saleNumberGenerator">The generator for sales created without a number.</param>
     /// <param name="publisher">The MediatR publisher for the recorded events.</param>
     /// <param name="mapper">The AutoMapper instance.</param>
-    public CreateSaleHandler(ISaleRepository saleRepository, IPublisher publisher, IMapper mapper)
+    public CreateSaleHandler(
+        ISaleRepository saleRepository,
+        ISaleNumberGenerator saleNumberGenerator,
+        IPublisher publisher,
+        IMapper mapper)
     {
         _saleRepository = saleRepository;
+        _saleNumberGenerator = saleNumberGenerator;
         _publisher = publisher;
         _mapper = mapper;
     }
@@ -35,10 +44,13 @@ public sealed class CreateSaleHandler : IRequestHandler<CreateSaleCommand, SaleR
     /// <param name="command">The validated command.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created sale.</returns>
+    /// <exception cref="DomainException">Thrown when the sent sale number belongs to another sale.</exception>
     public async Task<SaleResult> Handle(CreateSaleCommand command, CancellationToken cancellationToken)
     {
+        var saleNumber = await ResolveSaleNumberAsync(command.SaleNumber, cancellationToken);
+
         var sale = Sale.Create(
-            command.SaleNumber,
+            saleNumber,
             command.SaleDate,
             new ExternalIdentity(command.CustomerId, command.CustomerName),
             new ExternalIdentity(command.BranchId, command.BranchName),
@@ -48,6 +60,18 @@ public sealed class CreateSaleHandler : IRequestHandler<CreateSaleCommand, SaleR
         await _publisher.PublishDomainEventsAsync(sale, cancellationToken);
 
         return _mapper.Map<SaleResult>(sale);
+    }
+
+    private async Task<string> ResolveSaleNumberAsync(string? sentNumber, CancellationToken cancellationToken)
+    {
+        if (sentNumber is null)
+            return await _saleNumberGenerator.NextAsync(cancellationToken);
+
+        var saleNumber = sentNumber.Trim();
+        if (await _saleRepository.ExistsBySaleNumberAsync(saleNumber, cancellationToken))
+            throw new DomainException(Sale.DuplicateSaleNumberMessage(saleNumber));
+
+        return saleNumber;
     }
 
     private static SaleItemData ToItemData(SaleItemInput item) =>
