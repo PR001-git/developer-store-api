@@ -1,6 +1,9 @@
 using Ambev.DeveloperEvaluation.Domain.Entities;
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
+using Ambev.DeveloperEvaluation.ORM.Mapping;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Ambev.DeveloperEvaluation.ORM.Repositories;
 
@@ -24,7 +27,15 @@ public sealed class SaleRepository : ISaleRepository
     public async Task CreateAsync(Sale sale, CancellationToken cancellationToken = default)
     {
         _context.Sales.Add(sale);
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsSaleNumberConflict(exception))
+        {
+            // Another request saved the same number after this one checked it; the unique index is the final guard (spec §8.2).
+            throw new DomainException(Sale.DuplicateSaleNumberMessage(sale.SaleNumber), exception);
+        }
     }
 
     /// <inheritdoc />
@@ -36,4 +47,11 @@ public sealed class SaleRepository : ISaleRepository
     /// <inheritdoc />
     public Task<bool> ExistsBySaleNumberAsync(string saleNumber, CancellationToken cancellationToken = default) =>
         _context.Sales.AnyAsync(sale => sale.SaleNumber == saleNumber, cancellationToken);
+
+    private static bool IsSaleNumberConflict(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: SaleConfiguration.SaleNumberIndex
+        };
 }

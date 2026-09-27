@@ -1,4 +1,5 @@
 using Ambev.DeveloperEvaluation.Domain.Entities;
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Integration.Fixtures;
 using Ambev.DeveloperEvaluation.Integration.TestData;
 using Ambev.DeveloperEvaluation.ORM.Repositories;
@@ -130,5 +131,32 @@ public sealed class SaleRepositoryTests
 
         // Then
         exists.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Tests spec §8.2: when two requests pass the existence check with the same number, the unique index stops the
+    /// second save, and the repository reports it as <see cref="DomainException"/> (a 409), not as a database error (a 500).
+    /// </summary>
+    [Fact(DisplayName = "Given a saved sale When saving another sale with the same number Then it throws DomainException and only the first is stored")]
+    public async Task Given_SavedSale_When_SavingAnotherWithSameNumber_Then_ThrowsDomainException()
+    {
+        // Given
+        var first = SaleTestData.GenerateValidSale();
+        await using (var writeContext = _database.CreateContext())
+        {
+            await new SaleRepository(writeContext).CreateAsync(first);
+        }
+
+        var second = SaleTestData.GenerateValidSale(saleNumber: first.SaleNumber);
+
+        // When
+        await using var context = _database.CreateContext();
+        var act = () => new SaleRepository(context).CreateAsync(second);
+
+        // Then
+        var thrown = await act.Should().ThrowAsync<DomainException>();
+        thrown.WithMessage($"Sale number {first.SaleNumber} already exists").WithInnerException<DbUpdateException>();
+        await using var readContext = _database.CreateContext();
+        (await readContext.Sales.CountAsync(sale => sale.SaleNumber == first.SaleNumber)).Should().Be(1);
     }
 }

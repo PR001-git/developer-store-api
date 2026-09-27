@@ -15,6 +15,12 @@ public sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
     public const string SaleNumberSequence = "sale_number_seq";
 
     /// <summary>
+    /// The unique index on <c>SaleNumber</c>, over every row. <c>SaleRepository</c> recognises a violation of it by this
+    /// name. It's the name the <c>AddSales</c> migration already gave the index.
+    /// </summary>
+    public const string SaleNumberIndex = "IX_Sales_SaleNumber";
+
+    /// <summary>
     /// The shadow property that Npgsql maps to PostgreSQL's <c>xmin</c> system column, the concurrency token
     /// (spec decision D9). A shadow property keeps the domain free of persistence details.
     /// </summary>
@@ -32,7 +38,7 @@ public sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
 
         // Unique across every row, soft-deleted ones included.
         builder.Property(sale => sale.SaleNumber).IsRequired().HasMaxLength(Sale.SaleNumberMaxLength);
-        builder.HasIndex(sale => sale.SaleNumber).IsUnique();
+        builder.HasIndex(sale => sale.SaleNumber).IsUnique().HasDatabaseName(SaleNumberIndex);
 
         builder.HasIndex(sale => sale.SaleDate);
 
