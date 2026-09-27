@@ -26,8 +26,13 @@ namespace Ambev.DeveloperEvaluation.Application.Auth.AuthenticateUser
         public async Task<AuthenticateUserResult> Handle(AuthenticateUserCommand request, CancellationToken cancellationToken)
         {
             var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
-            
-            if (user == null || !_passwordHasher.VerifyPassword(request.Password, user.Password))
+
+            // Always verify, even for an unknown email, against a fixed dummy hash of the same cost as a real
+            // one. Short-circuiting on user == null would skip BCrypt entirely and answer faster than a known
+            // email with a wrong password, letting a caller enumerate which emails are signed up.
+            var passwordMatches = _passwordHasher.VerifyPassword(request.Password, user?.Password ?? _passwordHasher.DummyHash);
+
+            if (user == null || !passwordMatches)
             {
                 throw new UnauthorizedAccessException("Invalid credentials");
             }
