@@ -1,6 +1,8 @@
 ﻿using Ambev.DeveloperEvaluation.Domain.Entities;
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Ambev.DeveloperEvaluation.ORM.Repositories;
 
@@ -26,11 +28,25 @@ public class UserRepository : IUserRepository
     /// <param name="user">The user to create</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The created user</returns>
+    /// <exception cref="DomainException">
+    /// Thrown when the email's unique index rejects a row that the caller's own pre-check missed, because another
+    /// request inserted the same (case-insensitive) email first.
+    /// </exception>
     public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
-        await _context.Users.AddAsync(user, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
-        return user;
+        var originalEmail = user.Email;
+        user.Email = NormalizeEmail(user.Email);
+
+        try
+        {
+            await _context.Users.AddAsync(user, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            return user;
+        }
+        catch (DbUpdateException ex) when (IsUniqueEmailViolation(ex))
+        {
+            throw new DomainException($"User with email {originalEmail} already exists");
+        }
     }
 
     /// <summary>
@@ -45,15 +61,17 @@ public class UserRepository : IUserRepository
     }
 
     /// <summary>
-    /// Retrieves a user by their email address
+    /// Retrieves a user by their email address. The comparison is case-insensitive: emails are stored
+    /// trimmed and lower-cased, and the lookup normalizes <paramref name="email"/> the same way.
     /// </summary>
     /// <param name="email">The email address to search for</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The user if found, null otherwise</returns>
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
+        var normalizedEmail = NormalizeEmail(email);
         return await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
     }
 
     /// <summary>
@@ -72,4 +90,20 @@ public class UserRepository : IUserRepository
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    /// <summary>
+    /// Normalizes an email address for storage and lookup, so the unique index on Users.Email
+    /// enforces uniqueness case-insensitively.
+    /// </summary>
+    /// <param name="email">The email address to normalize.</param>
+    /// <returns>The trimmed, lower-invariant email address.</returns>
+    private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    /// <summary>
+    /// Tells apart a unique-index violation on Users.Email (Postgres SQLSTATE 23505) from any other update failure.
+    /// </summary>
+    /// <param name="exception">The exception SaveChangesAsync threw.</param>
+    /// <returns>True when the failure is the email's unique index rejecting a duplicate row.</returns>
+    private static bool IsUniqueEmailViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 }
