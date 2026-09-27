@@ -18,8 +18,8 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
     /// - Username: Required, length between 3 and 50 characters
     /// - Password: Must meet security requirements (using PasswordValidator)
     /// - Phone: Must match international format (+X XXXXXXXXXX)
-    /// - Status: Cannot be Unknown
-    /// - Role: Cannot be None
+    /// - Status: Cannot be Unknown, and must be a defined UserStatus value
+    /// - Role: Cannot be None, and must be a defined UserRole value
     /// </remarks>
     public CreateUserRequestValidator()
     {
@@ -27,7 +27,7 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
         RuleFor(user => user.Username).NotEmpty().Length(3, 50);
         RuleFor(user => user.Password).SetValidator(new PasswordValidator());
         RuleFor(user => user.Phone).Matches(@"^\+?[1-9]\d{1,14}$");
-        RuleFor(user => user.Status).NotEqual(UserStatus.Unknown);
-        RuleFor(user => user.Role).NotEqual(UserRole.None);
+        RuleFor(user => user.Status).NotEqual(UserStatus.Unknown).IsInEnum();
+        RuleFor(user => user.Role).NotEqual(UserRole.None).IsInEnum();
     }
 }

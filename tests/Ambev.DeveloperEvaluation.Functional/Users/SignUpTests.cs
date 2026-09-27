@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Ambev.DeveloperEvaluation.Functional.Fixtures;
 using Ambev.DeveloperEvaluation.Functional.TestData;
 using FluentAssertions;
@@ -60,6 +61,34 @@ public sealed class SignUpTests
         var id = (await response.ReadDataAsync()).GetProperty("id").GetGuid();
         (await response.Content.ReadAsStringAsync()).Should().Be(
             $$$"""{"success":true,"message":"User created successfully","data":{"id":"{{{id}}}","name":"{{{request.Username}}}","email":"{{{request.Email}}}","phone":"{{{request.Phone}}}","role":"Admin","status":"Active"}}""");
+    }
+
+    /// <summary>
+    /// Tests that the numeric value behind an enum is rejected, closing the gap that let a client send <c>"role": 7</c>
+    /// straight past the string-only contract the API documents.
+    /// </summary>
+    [Fact(DisplayName = "Given role sent as a raw JSON number When signing up Then returns 400 ValidationError")]
+    public async Task Given_RoleSentAsRawNumber_When_SigningUp_Then_Returns400ValidationError()
+    {
+        // Given
+        using var client = _api.CreateClient();
+        var request = SignUpRequestTestData.GenerateValid();
+
+        // When
+        using var response = await client.PostAsJsonAsync("/api/users", new
+        {
+            request.Username,
+            request.Password,
+            request.Phone,
+            request.Email,
+            request.Status,
+            Role = 7
+        });
+
+        // Then
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        document.RootElement.GetProperty("type").GetString().Should().Be("ValidationError");
     }
 
     /// <summary>
