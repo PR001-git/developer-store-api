@@ -61,4 +61,25 @@ public sealed class SignUpTests
         (await response.Content.ReadAsStringAsync()).Should().Be(
             $$$"""{"success":true,"message":"User created successfully","data":{"id":"{{{id}}}","name":"{{{request.Username}}}","email":"{{{request.Email}}}","phone":"{{{request.Phone}}}","role":"Admin","status":"Active"}}""");
     }
+
+    /// <summary>
+    /// Tests that an email can be signed up only once, and that the second attempt is a business rule violation, not a server error.
+    /// </summary>
+    [Fact(DisplayName = "Given an email that is already signed up When signing up again with it Then returns 409 BusinessRuleViolation")]
+    public async Task Given_EmailAlreadySignedUp_When_SigningUpAgain_Then_Returns409BusinessRuleViolation()
+    {
+        // Given
+        using var client = _api.CreateClient();
+        var first = SignUpRequestTestData.GenerateValid();
+        await client.SignUpAsync(first);
+        var second = SignUpRequestTestData.GenerateValid() with { Email = first.Email };
+
+        // When
+        using var response = await client.PostAsJsonAsync("/api/users", second);
+
+        // Then
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await response.Content.ReadAsStringAsync()).Should().Be(
+            $$"""{"type":"BusinessRuleViolation","error":"Business rule violation","detail":"User with email {{first.Email}} already exists"}""");
+    }
 }
