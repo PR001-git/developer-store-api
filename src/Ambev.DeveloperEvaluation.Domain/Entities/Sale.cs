@@ -1,4 +1,5 @@
 using Ambev.DeveloperEvaluation.Domain.Common;
+using Ambev.DeveloperEvaluation.Domain.Events;
 using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.ValueObjects;
 
@@ -29,6 +30,7 @@ public sealed class Sale : BaseEntity
     public const string RepeatedProductMessage = "Each product can appear only once in a sale";
 
     private readonly List<SaleItem> _items = [];
+    private readonly List<IDomainEvent> _domainEvents = [];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Sale"/> class for EF Core, which sets the properties itself.
@@ -93,8 +95,14 @@ public sealed class Sale : BaseEntity
     public DateTime? UpdatedAt { get; private set; }
 
     /// <summary>
+    /// Gets the events recorded since the sale was created or loaded, in order. They aren't stored:
+    /// the application publishes them after saving the sale, then clears them.
+    /// </summary>
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    /// <summary>
     /// Creates a sale with a new id. Each line gets its discount (rule R1) and amounts (rule R3),
-    /// and the sale total is the sum of the line totals.
+    /// the sale total is the sum of the line totals, and a <see cref="SaleCreatedEvent"/> is recorded.
     /// </summary>
     /// <param name="saleNumber">The sale number. Trimmed, it must have 1 to 50 characters.</param>
     /// <param name="saleDate">The date and time of the sale. A value without a kind is read as UTC; a local one is converted (rule R13).</param>
@@ -132,8 +140,16 @@ public sealed class Sale : BaseEntity
         sale._items.AddRange(items.Select(item => new SaleItem(item.Product, item.Quantity, item.UnitPrice)));
         sale.RecalculateTotal();
 
+        sale._domainEvents.Add(new SaleCreatedEvent(
+            sale.Id, sale.SaleNumber, customer.Id, branch.Id, sale.TotalAmount, sale._items.Count, sale.CreatedAt));
+
         return sale;
     }
+
+    /// <summary>
+    /// Forgets the recorded events, once they have been published.
+    /// </summary>
+    public void ClearDomainEvents() => _domainEvents.Clear();
 
     private static void EnsureValidLines(IReadOnlyCollection<SaleItemData> items)
     {

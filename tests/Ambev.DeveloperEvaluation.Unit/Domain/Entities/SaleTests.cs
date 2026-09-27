@@ -1,4 +1,5 @@
 using Ambev.DeveloperEvaluation.Domain.Entities;
+using Ambev.DeveloperEvaluation.Domain.Events;
 using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.ValueObjects;
 using Ambev.DeveloperEvaluation.Unit.Domain.Entities.TestData;
@@ -314,5 +315,42 @@ public sealed class SaleTests
 
         // Then
         sale.Items.Should().ContainSingle().Which.UnitPrice.Should().Be(4.50m);
+    }
+
+    /// <summary>
+    /// Tests that creating a sale records exactly one <see cref="SaleCreatedEvent"/> with the §5.4 payload,
+    /// stamped with the creation time.
+    /// </summary>
+    [Fact(DisplayName = "Given valid input When creating a sale Then it records one SaleCreatedEvent with the sale's data")]
+    public void Given_ValidInput_When_CreatingSale_Then_RecordsSaleCreatedEvent()
+    {
+        // When
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+
+        // Then
+        sale.DomainEvents.Should().ContainSingle().Which.Should().Be(new SaleCreatedEvent(
+            SaleId: sale.Id,
+            SaleNumber: sale.SaleNumber,
+            CustomerId: sale.Customer.Id,
+            BranchId: sale.Branch.Id,
+            TotalAmount: 46.20m,
+            ItemCount: 2,
+            OccurredAt: sale.CreatedAt));
+    }
+
+    /// <summary>
+    /// Tests that the recorded events can be cleared once they have been published.
+    /// </summary>
+    [Fact(DisplayName = "Given a new sale with a recorded event When clearing its domain events Then none remain")]
+    public void Given_NewSaleWithRecordedEvent_When_ClearingDomainEvents_Then_NoneRemain()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale();
+
+        // When
+        sale.ClearDomainEvents();
+
+        // Then
+        sale.DomainEvents.Should().BeEmpty();
     }
 }
