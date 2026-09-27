@@ -89,4 +89,46 @@ public sealed class SaleRepositoryTests
         // Then
         saved.Should().BeNull();
     }
+
+    /// <summary>
+    /// Tests that a saved sale's exact number counts as taken.
+    /// </summary>
+    [Fact(DisplayName = "Given a saved sale When checking its exact number Then the number exists")]
+    public async Task Given_SavedSale_When_CheckingExactNumber_Then_NumberExists()
+    {
+        // Given
+        var sale = SaleTestData.GenerateValidSale();
+        await using (var writeContext = _database.CreateContext())
+        {
+            await new SaleRepository(writeContext).CreateAsync(sale);
+        }
+
+        // When
+        await using var readContext = _database.CreateContext();
+        var exists = await new SaleRepository(readContext).ExistsBySaleNumberAsync(sale.SaleNumber);
+
+        // Then
+        exists.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Tests that the comparison is exact (spec §12): the same number in another case isn't taken.
+    /// </summary>
+    [Fact(DisplayName = "Given a saved sale When checking its number in another case Then the number doesn't exist")]
+    public async Task Given_SavedSale_When_CheckingNumberInAnotherCase_Then_NumberDoesNotExist()
+    {
+        // Given
+        var sale = SaleTestData.GenerateValidSale(saleNumber: $"S-CASE-{Guid.NewGuid():N}".ToUpperInvariant());
+        await using (var writeContext = _database.CreateContext())
+        {
+            await new SaleRepository(writeContext).CreateAsync(sale);
+        }
+
+        // When
+        await using var readContext = _database.CreateContext();
+        var exists = await new SaleRepository(readContext).ExistsBySaleNumberAsync(sale.SaleNumber.ToLowerInvariant());
+
+        // Then
+        exists.Should().BeFalse();
+    }
 }

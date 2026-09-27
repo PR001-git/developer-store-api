@@ -22,4 +22,12 @@ public interface ISaleRepository
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The sale, or <c>null</c> if there is none with that id.</returns>
     Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tells whether a sale already has this sale number. The comparison is exact: case counts.
+    /// </summary>
+    /// <param name="saleNumber">The sale number, already trimmed.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><c>true</c> if a sale has the number.</returns>
+    Task<bool> ExistsBySaleNumberAsync(string saleNumber, CancellationToken cancellationToken = default);
 }

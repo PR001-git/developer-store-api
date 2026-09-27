@@ -32,4 +32,8 @@ public sealed class SaleRepository : ISaleRepository
         _context.Sales
             .Include(sale => sale.Items)
             .FirstOrDefaultAsync(sale => sale.Id == id, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<bool> ExistsBySaleNumberAsync(string saleNumber, CancellationToken cancellationToken = default) =>
+        _context.Sales.AnyAsync(sale => sale.SaleNumber == saleNumber, cancellationToken);
 }

@@ -16,10 +16,11 @@ public static class SaleTestData
     /// (so across the discount tiers) and prices with cents.
     /// </summary>
     /// <param name="itemCount">The number of lines.</param>
+    /// <param name="saleNumber">The sale number. Without one, a random <c>S-</c> number from 100000 to 999999.</param>
     /// <returns>A new sale.</returns>
-    public static Sale GenerateValidSale(int itemCount = 3) =>
+    public static Sale GenerateValidSale(int itemCount = 3, string? saleNumber = null) =>
         Sale.Create(
-            $"S-{Faker.Random.Number(100000, 999999)}",
+            saleNumber ?? $"S-{Faker.Random.Number(100000, 999999)}",
             Faker.Date.Recent().ToUniversalTime(),
             new ExternalIdentity(Guid.NewGuid(), Faker.Name.FullName()),
             new ExternalIdentity(Guid.NewGuid(), $"Filial {Faker.Address.City()}"),
