@@ -81,3 +81,11 @@ Content-Type: application/json
 ### Get the sale back (200 with the same sale)
 GET {{baseUrl}}/api/sales/{{saleId}}
 Authorization: Bearer {{token}}
+
+### Cancel the sale: its items and total stay as they were (200 with isCancelled true)
+PATCH {{baseUrl}}/api/sales/{{saleId}}/cancel
+Authorization: Bearer {{token}}
+
+### Cancel it again: a cancelled sale is read-only (409 BusinessRuleViolation)
+PATCH {{baseUrl}}/api/sales/{{saleId}}/cancel
+Authorization: Bearer {{token}}
