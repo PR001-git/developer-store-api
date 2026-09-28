@@ -75,7 +75,9 @@ public sealed class UpdateSaleTests
                 DiscountPercentage = 20m, DiscountAmount = 9.00m, TotalAmount = 36.00m
             },
             droppedItem with { IsCancelled = true },
-            new SaleItemResponseBody(addedId, addedLine.ProductId, addedLine.ProductName, 2, 8.00m, 0m, 0.00m, 16.00m, false)
+            new SaleItemResponseBody(
+                Id: addedId, ProductId: addedLine.ProductId, ProductName: addedLine.ProductName, Quantity: 2,
+                UnitPrice: 8.00m, DiscountPercentage: 0m, DiscountAmount: 0.00m, TotalAmount: 16.00m, IsCancelled: false)
         });
 
         using var read = await client.GetAsync($"/api/sales/{created.Id}");
@@ -151,7 +153,7 @@ public sealed class UpdateSaleTests
     /// Tests rule R12 over HTTP: a <c>saleNumber</c> sent on PUT is ignored, and the sale keeps its number.
     /// </summary>
     [Fact(DisplayName = "Given a body with a saleNumber When putting the update Then returns 200 and the sale keeps its number, and a read shows the same")]
-    public async Task Given_BodyWithSaleNumber_When_PuttingUpdate_Then_SaleKeepsItsNumber()
+    public async Task Given_BodyWithSaleNumber_When_PuttingUpdate_Then_Returns200AndSaleKeepsItsNumber()
     {
         // Given
         using var client = _api.CreateClient();
