@@ -3,7 +3,7 @@ namespace Ambev.DeveloperEvaluation.Functional.TestData;
 /// <summary>
 /// The JSON body of <c>POST /api/sales</c> (spec §7.2), as a client writes it.
 /// </summary>
-/// <param name="SaleNumber">The sale number.</param>
+/// <param name="SaleNumber">The sale number, or <c>null</c> for the server to generate one.</param>
 /// <param name="SaleDate">The date and time of the sale.</param>
 /// <param name="CustomerId">The id of the customer.</param>
 /// <param name="CustomerName">The customer's name.</param>
@@ -11,7 +11,7 @@ namespace Ambev.DeveloperEvaluation.Functional.TestData;
 /// <param name="BranchName">The branch's name.</param>
 /// <param name="Items">The lines of the sale.</param>
 public sealed record SaleRequestBody(
-    string SaleNumber,
+    string? SaleNumber,
     DateTime SaleDate,
     Guid CustomerId,
     string CustomerName,

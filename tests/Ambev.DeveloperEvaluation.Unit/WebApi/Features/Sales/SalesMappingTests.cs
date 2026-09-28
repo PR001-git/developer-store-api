@@ -97,4 +97,17 @@ public sealed class SalesMappingTests
         // Then
         response.Should().BeEquivalentTo(result);
     }
+
+    /// <summary>
+    /// Tests that a request without a sale number becomes a command without one, so the handler generates it (rule R12).
+    /// </summary>
+    [Fact(DisplayName = "Given a create-sale request without a sale number When mapping it to CreateSaleCommand Then the command has no sale number")]
+    public void Given_CreateSaleRequestWithoutSaleNumber_When_MappingToCommand_Then_CommandHasNoSaleNumber()
+    {
+        // When
+        var command = _configuration.CreateMapper().Map<CreateSaleCommand>(new CreateSaleRequest());
+
+        // Then
+        command.SaleNumber.Should().BeNull();
+    }
 }
