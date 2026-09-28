@@ -39,6 +39,7 @@ export class ApiClient {
     const response = await this.context.post('/api/users', {
       data: { ...user, status: 'Active', role: 'Customer' },
     });
+    expect(response.status(), await response.text()).toBe(201);
     return response.status();
   }
 

@@ -5,7 +5,7 @@ export default async function globalSetup(): Promise<void> {
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     try {
-      if ((await fetch(`${API_URL}/health/ready`)).ok) {
+      if ((await fetch(`${API_URL}/health/ready`, { signal: AbortSignal.timeout(5_000) })).ok) {
         return;
       }
     } catch {
