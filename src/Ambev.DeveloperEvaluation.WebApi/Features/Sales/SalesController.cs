@@ -1,6 +1,7 @@
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSaleItem;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.Application.Sales.DeleteSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
 using Ambev.DeveloperEvaluation.Application.Sales.ListSales;
 using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
@@ -91,6 +92,25 @@ public sealed class SalesController : BaseController
         var result = await _mediator.Send(new GetSaleQuery(id), cancellationToken);
 
         return Ok(_mapper.Map<SaleResponse>(result), "Sale retrieved successfully");
+    }
+
+    /// <summary>
+    /// Soft-deletes a sale. It disappears from every read afterwards, its number stays taken, and nothing is published.
+    /// A cancelled sale can be deleted too.
+    /// </summary>
+    /// <param name="id">The id of the sale.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>200 with <c>{success, message}</c>.</returns>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteSale([FromRoute] Guid id, CancellationToken cancellationToken)
+    {
+        await _mediator.Send(new DeleteSaleCommand(id), cancellationToken);
+
+        return Ok("Sale deleted successfully");
     }
 
     /// <summary>
