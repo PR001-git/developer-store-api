@@ -166,6 +166,19 @@ public sealed class Sale : BaseEntity
     public void ClearDomainEvents() => _domainEvents.Clear();
 
     /// <summary>
+    /// Soft-deletes the sale (rule R11): <see cref="IsDeleted"/> is set, and <see cref="DeletedAt"/> and
+    /// <see cref="UpdatedAt"/> get the same time. The items stay as the history, and no event is recorded.
+    /// A cancelled sale can be deleted too (rule R7).
+    /// </summary>
+    public void Delete()
+    {
+        var now = DateTime.UtcNow;
+        IsDeleted = true;
+        DeletedAt = now;
+        UpdatedAt = now;
+    }
+
+    /// <summary>
     /// Cancels the sale. Its items and total stay as they were, as the historical record (rule R8);
     /// <see cref="UpdatedAt"/> is set and a <see cref="SaleCancelledEvent"/> is recorded.
     /// </summary>

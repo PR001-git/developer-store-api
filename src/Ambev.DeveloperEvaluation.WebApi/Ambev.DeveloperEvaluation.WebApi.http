@@ -193,3 +193,15 @@ Authorization: Bearer {{token}}
 ### Cancel the last active item: the sale is cancelled too (200; isCancelled true, totalAmount 0)
 PATCH {{baseUrl}}/api/sales/{{twoItemSaleId}}/items/{{secondItemId}}/cancel
 Authorization: Bearer {{token}}
+
+### Delete the sale created above. The requests above cancelled it, and a cancelled sale can be deleted too (200 with only success and message)
+DELETE {{baseUrl}}/api/sales/{{saleId}}
+Authorization: Bearer {{token}}
+
+### Get the deleted sale (404 ResourceNotFound)
+GET {{baseUrl}}/api/sales/{{saleId}}
+Authorization: Bearer {{token}}
+
+### Delete it again (404 ResourceNotFound)
+DELETE {{baseUrl}}/api/sales/{{saleId}}
+Authorization: Bearer {{token}}

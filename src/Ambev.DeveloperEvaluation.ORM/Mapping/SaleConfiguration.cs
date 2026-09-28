@@ -63,6 +63,10 @@ public sealed class SaleConfiguration : IEntityTypeConfiguration<Sale>
 
         builder.Ignore(sale => sale.DomainEvents);
 
+        // Soft delete (spec decision D7): every query hides deleted sales, so no query has to remember a filter.
+        // SaleRepository.ExistsBySaleNumberAsync opts out, because a deleted sale keeps its number (rule R12).
+        builder.HasQueryFilter(sale => !sale.IsDeleted);
+
         builder.Property<uint>(RowVersion).IsRowVersion();
     }
 }

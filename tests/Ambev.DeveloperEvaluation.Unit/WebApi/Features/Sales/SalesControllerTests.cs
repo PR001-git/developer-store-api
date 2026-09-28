@@ -2,6 +2,7 @@ using Ambev.DeveloperEvaluation.Application.Sales;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSaleItem;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.Application.Sales.DeleteSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
 using Ambev.DeveloperEvaluation.Application.Sales.ListSales;
 using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
@@ -99,6 +100,25 @@ public sealed class SalesControllerTests
         var ok = response.Should().BeOfType<OkObjectResult>().Subject;
         MvcJson.Serialize(ok.Value).Should().Be(
             $$"""{"success":true,"message":"Sale retrieved successfully","data":{{ExampleSaleJson}}}""");
+    }
+
+    /// <summary>
+    /// Tests that deleting a sale sends the command for the route id and returns 200 with exactly
+    /// <c>{success, message}</c>: no <c>data</c>, and the envelope built once.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale id When deleting the sale Then it sends the command and returns 200 with only success and message")]
+    public async Task Given_SaleId_When_DeletingSale_Then_Returns200WithSuccessAndMessageOnly()
+    {
+        // Given
+        var id = Guid.NewGuid();
+
+        // When
+        var response = await _controller.DeleteSale(id, CancellationToken.None);
+
+        // Then
+        await _mediator.Received(1).Send(new DeleteSaleCommand(id), Arg.Any<CancellationToken>());
+        var ok = response.Should().BeOfType<OkObjectResult>().Subject;
+        MvcJson.Serialize(ok.Value).Should().Be("""{"success":true,"message":"Sale deleted successfully"}""");
     }
 
     /// <summary>
