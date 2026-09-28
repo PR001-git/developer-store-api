@@ -209,4 +209,77 @@ public sealed class SaleRepositoryTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Only a sale loaded with GetByIdAsync can be updated");
     }
+
+    /// <summary>
+    /// Tests that cancelling an item of a loaded sale is saved: a new context reads that item cancelled,
+    /// the total over the active item, and <c>UpdatedAt</c> set.
+    /// </summary>
+    [Fact(DisplayName = "Given a loaded sale with an item cancelled When updating it Then a new context reads the item cancelled and the total dropped")]
+    public async Task Given_LoadedSaleWithItemCancelled_When_Updating_Then_NewContextReadsItemCancelled()
+    {
+        // Given
+        var sale = SaleTestData.GenerateValidSale(itemCount: 2);
+        var cancelledId = sale.Items.First().Id;
+        var active = sale.Items.Last();
+        await using (var createContext = _database.CreateContext())
+        {
+            await new SaleRepository(createContext).CreateAsync(sale);
+        }
+
+        await using var updateContext = _database.CreateContext();
+        var repository = new SaleRepository(updateContext);
+        var loaded = await repository.GetByIdAsync(sale.Id);
+        loaded!.CancelItem(cancelledId);
+
+        // When
+        await repository.UpdateAsync(loaded);
+
+        // Then
+        await using var readContext = _database.CreateContext();
+        var saved = await new SaleRepository(readContext).GetByIdAsync(sale.Id);
+        saved.Should().NotBeNull();
+        saved!.IsCancelled.Should().BeFalse();
+        saved.TotalAmount.Should().Be(active.TotalAmount);
+        saved.UpdatedAt.Should().BeCloseTo(loaded.UpdatedAt!.Value, TimeSpan.FromMicroseconds(1));
+        saved.Items.Should().ContainSingle(item => item.IsCancelled).Which.Id.Should().Be(cancelledId);
+    }
+
+    /// <summary>
+    /// Tests spec decision D9: two requests load the same sale and each cancel a different item. The first save wins.
+    /// The second is refused by the <c>xmin</c> token on the <c>Sales</c> row, which every mutation writes, and rolls
+    /// back whole. Without the token both lines would be cancelled while the sale stayed open, breaking rule R6.
+    /// </summary>
+    [Fact(DisplayName = "Given two contexts that loaded the same sale When each cancels a different item and saves Then the second save throws DbUpdateConcurrencyException and only the first change is stored")]
+    public async Task Given_TwoContextsLoadedSameSale_When_EachCancelsDifferentItem_Then_SecondSaveThrowsConcurrencyException()
+    {
+        // Given
+        var sale = SaleTestData.GenerateValidSale(itemCount: 2);
+        var firstItemId = sale.Items.First().Id;
+        var secondItem = sale.Items.Last();
+        await using (var createContext = _database.CreateContext())
+        {
+            await new SaleRepository(createContext).CreateAsync(sale);
+        }
+
+        await using var firstContext = _database.CreateContext();
+        await using var secondContext = _database.CreateContext();
+        var firstRepository = new SaleRepository(firstContext);
+        var secondRepository = new SaleRepository(secondContext);
+        var firstLoad = await firstRepository.GetByIdAsync(sale.Id);
+        var secondLoad = await secondRepository.GetByIdAsync(sale.Id);
+        firstLoad!.CancelItem(firstItemId);
+        secondLoad!.CancelItem(secondItem.Id);
+        await firstRepository.UpdateAsync(firstLoad);
+
+        // When
+        var act = () => secondRepository.UpdateAsync(secondLoad);
+
+        // Then
+        await act.Should().ThrowAsync<DbUpdateConcurrencyException>();
+        await using var readContext = _database.CreateContext();
+        var saved = await new SaleRepository(readContext).GetByIdAsync(sale.Id);
+        saved!.IsCancelled.Should().BeFalse();
+        saved.TotalAmount.Should().Be(secondItem.TotalAmount);
+        saved.Items.Should().ContainSingle(item => item.IsCancelled).Which.Id.Should().Be(firstItemId);
+    }
 }

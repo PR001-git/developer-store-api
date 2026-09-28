@@ -80,4 +80,9 @@ public sealed class SaleItem : BaseEntity
     /// Gets a value indicating whether the line was cancelled. A cancelled line doesn't count in the sale total.
     /// </summary>
     public bool IsCancelled { get; private set; }
+
+    /// <summary>
+    /// Cancels the line. Its amounts stay as they were, as history; the sale stops counting it in its total.
+    /// </summary>
+    internal void Cancel() => IsCancelled = true;
 }
