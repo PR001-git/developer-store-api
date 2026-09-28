@@ -1,3 +1,5 @@
+using Ambev.DeveloperEvaluation.Domain.ValueObjects;
+
 namespace Ambev.DeveloperEvaluation.Application.Sales;
 
 /// <summary>
@@ -24,4 +26,10 @@ public sealed class SaleItemInput
     /// Gets or sets the price of one item: above 0, with at most 2 decimal places.
     /// </summary>
     public decimal UnitPrice { get; set; }
+
+    /// <summary>
+    /// Converts the line into the domain's input, which the create and update handlers pass to <c>Sale</c>.
+    /// </summary>
+    /// <returns>The line's input data.</returns>
+    public SaleItemData ToItemData() => new(new ExternalIdentity(ProductId, ProductName), Quantity, UnitPrice);
 }

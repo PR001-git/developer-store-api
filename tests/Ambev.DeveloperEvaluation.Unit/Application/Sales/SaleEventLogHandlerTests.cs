@@ -115,4 +115,30 @@ public sealed class SaleEventLogHandlerTests
             new KeyValuePair<string, object?>("@Event", itemCancelled),
             new KeyValuePair<string, object?>("{OriginalFormat}", "Sale event {EventName} published {@Event}"));
     }
+
+    /// <summary>
+    /// Tests that a <see cref="SaleModifiedEvent"/> published as <see cref="IDomainEvent"/> reaches the log handler
+    /// and becomes one structured Information entry.
+    /// </summary>
+    [Fact(DisplayName = "Given MediatR with the Application handlers When a SaleModifiedEvent is published as IDomainEvent Then the log handler writes one structured Information entry with it")]
+    public async Task Given_MediatRWithApplicationHandlers_When_SaleModifiedEventPublished_Then_LogHandlerWritesIt()
+    {
+        // Given
+        var services = new ServiceCollection();
+        services.AddMediatR(config => config.RegisterServicesFromAssembly(typeof(ApplicationLayer).Assembly));
+        services.AddSingleton(_logger);
+        await using var provider = services.BuildServiceProvider();
+        IDomainEvent saleModified = new SaleModifiedEvent(Guid.NewGuid(), "S-000123", 52.00m, DateTime.UtcNow);
+
+        // When
+        await provider.GetRequiredService<IPublisher>().Publish(saleModified);
+
+        // Then
+        var logCall = _logger.ReceivedCalls().Should().ContainSingle(call => call.GetMethodInfo().Name == nameof(ILogger.Log)).Subject;
+        logCall.GetArguments()[0].Should().Be(LogLevel.Information);
+        logCall.GetArguments()[2].Should().BeAssignableTo<IReadOnlyList<KeyValuePair<string, object?>>>().Which.Should().Equal(
+            new KeyValuePair<string, object?>("EventName", "SaleModifiedEvent"),
+            new KeyValuePair<string, object?>("@Event", saleModified),
+            new KeyValuePair<string, object?>("{OriginalFormat}", "Sale event {EventName} published {@Event}"));
+    }
 }

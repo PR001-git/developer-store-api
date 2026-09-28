@@ -151,7 +151,7 @@ public sealed class Sale : BaseEntity
             CreatedAt = DateTime.UtcNow
         };
 
-        sale._items.AddRange(items.Select(item => new SaleItem(item.Product, item.Quantity, item.UnitPrice)));
+        sale._items.AddRange(BuildLines(items));
         sale.RecalculateTotal();
 
         sale._domainEvents.Add(new SaleCreatedEvent(
@@ -196,13 +196,53 @@ public sealed class Sale : BaseEntity
             throw new DomainException($"Item {itemId} of sale {SaleNumber} is already cancelled");
 
         var now = DateTime.UtcNow;
-        item.Cancel();
+        CancelLine(item, now);
         RecalculateTotal();
         UpdatedAt = now;
-        _domainEvents.Add(new ItemCancelledEvent(Id, SaleNumber, item.Id, item.Product.Id, now));
 
         if (_items.TrueForAll(line => line.IsCancelled))
             MarkCancelled(now);
+    }
+
+    /// <summary>
+    /// Replaces the header and reconciles the lines by product (rule R10):
+    /// <list type="bullet">
+    /// <item><see cref="SaleDate"/> (in UTC, rule R13), <see cref="Customer"/> and <see cref="Branch"/> are replaced;
+    /// the sale number never changes.</item>
+    /// <item>An active line whose product is sent gets the new quantity, price and name, and its discount again.</item>
+    /// <item>A sent product with no active line gets a new line, even if its only line was cancelled.</item>
+    /// <item>An active line whose product isn't sent is cancelled, and an <see cref="ItemCancelledEvent"/> is recorded.</item>
+    /// <item>Cancelled lines never change.</item>
+    /// </list>
+    /// Then the total is recalculated, <see cref="UpdatedAt"/> is set, and a <see cref="SaleModifiedEvent"/> is
+    /// recorded last, even when nothing changed.
+    /// </summary>
+    /// <param name="saleDate">The date and time of the sale. A value without a kind is read as UTC; a local one is converted (rule R13).</param>
+    /// <param name="customer">The customer who bought.</param>
+    /// <param name="branch">The branch where the sale was made.</param>
+    /// <param name="items">The lines the sale must have: at least one, and one per product.</param>
+    /// <exception cref="DomainException">
+    /// Thrown when the sale is cancelled (rule R7), there are no lines, a product repeats, or a line has a quantity
+    /// outside 1 to 20 or an invalid unit price. Nothing changes then.
+    /// </exception>
+    public void Update(
+        DateTime saleDate,
+        ExternalIdentity customer,
+        ExternalIdentity branch,
+        IReadOnlyCollection<SaleItemData> items)
+    {
+        EnsureNotCancelled();
+        EnsureValidLines(items);
+        var lines = BuildLines(items);
+
+        var now = DateTime.UtcNow;
+        SaleDate = ToUtc(saleDate);
+        Customer = customer;
+        Branch = branch;
+        ReconcileLines(lines, now);
+        RecalculateTotal();
+        UpdatedAt = now;
+        _domainEvents.Add(new SaleModifiedEvent(Id, SaleNumber, TotalAmount, now));
     }
 
     private void EnsureNotCancelled()
@@ -218,6 +258,31 @@ public sealed class Sale : BaseEntity
         _domainEvents.Add(new SaleCancelledEvent(Id, SaleNumber, now));
     }
 
+    private void CancelLine(SaleItem item, DateTime now)
+    {
+        item.Cancel();
+        _domainEvents.Add(new ItemCancelledEvent(Id, SaleNumber, item.Id, item.Product.Id, now));
+    }
+
+    private void ReconcileLines(IReadOnlyCollection<SaleItem> candidates, DateTime now)
+    {
+        // Rule R10. Cancelled lines are history: they are never matched or changed.
+        var activeLines = _items.Where(line => !line.IsCancelled).ToList();
+        var sentProductIds = candidates.Select(candidate => candidate.Product.Id).ToHashSet();
+
+        foreach (var line in activeLines.Where(line => !sentProductIds.Contains(line.Product.Id)))
+            CancelLine(line, now);
+
+        foreach (var candidate in candidates)
+        {
+            var activeLine = activeLines.Find(line => line.Product.Id == candidate.Product.Id);
+            if (activeLine is null)
+                _items.Add(candidate);
+            else
+                activeLine.UpdateFrom(candidate);
+        }
+    }
+
     private static void EnsureValidLines(IReadOnlyCollection<SaleItemData> items)
     {
         if (items.Count == 0)
@@ -226,6 +291,9 @@ public sealed class Sale : BaseEntity
         if (items.DistinctBy(item => item.Product.Id).Count() != items.Count)
             throw new DomainException(RepeatedProductMessage);
     }
+
+    private static List<SaleItem> BuildLines(IReadOnlyCollection<SaleItemData> items) =>
+        items.Select(item => new SaleItem(item.Product, item.Quantity, item.UnitPrice)).ToList();
 
     private void RecalculateTotal() =>
         TotalAmount = _items.Where(item => !item.IsCancelled).Sum(item => item.TotalAmount);

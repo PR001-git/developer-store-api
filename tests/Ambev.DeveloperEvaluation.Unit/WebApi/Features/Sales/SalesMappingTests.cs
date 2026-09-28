@@ -1,7 +1,9 @@
 using Ambev.DeveloperEvaluation.Application.Sales;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.WebApi.Features.Sales.UpdateSale;
 using AutoMapper;
 using FluentAssertions;
 using Xunit;
@@ -9,15 +11,16 @@ using Xunit;
 namespace Ambev.DeveloperEvaluation.Unit.WebApi.Features.Sales;
 
 /// <summary>
-/// Contains unit tests for the WebApi Sales profiles, <see cref="CreateSaleProfile"/> and <see cref="SaleContractProfile"/>.
-/// The configuration holds only the Sales profiles: the API's whole configuration can't be validated,
-/// because of the template's duplicate <c>CreateUserRequest</c> map (spec §9.2).
+/// Contains unit tests for the WebApi Sales profiles, <see cref="CreateSaleProfile"/>, <see cref="UpdateSaleProfile"/>
+/// and <see cref="SaleContractProfile"/>. The configuration holds only the Sales profiles: the API's whole
+/// configuration can't be validated, because of the template's duplicate <c>CreateUserRequest</c> map (spec §9.2).
 /// </summary>
 public sealed class SalesMappingTests
 {
     private readonly MapperConfiguration _configuration = new(config =>
     {
         config.AddProfile<CreateSaleProfile>();
+        config.AddProfile<UpdateSaleProfile>();
         config.AddProfile<SaleContractProfile>();
     });
 
@@ -61,6 +64,36 @@ public sealed class SalesMappingTests
 
         // Then
         command.Should().BeEquivalentTo(request, options => options.WithStrictOrdering());
+    }
+
+    /// <summary>
+    /// Tests that the update request becomes a command with the same header and lines. The id stays empty: the
+    /// controller takes it from the route.
+    /// </summary>
+    [Fact(DisplayName = "Given an update-sale request When mapping it to UpdateSaleCommand Then the header and every line are copied and the id is left empty")]
+    public void Given_UpdateSaleRequest_When_MappingToCommand_Then_HeaderAndLinesAreCopied()
+    {
+        // Given
+        var request = new UpdateSaleRequest
+        {
+            SaleDate = new DateTime(2026, 9, 25, 10, 0, 0, DateTimeKind.Utc),
+            CustomerId = Guid.NewGuid(),
+            CustomerName = "Maria Silva",
+            BranchId = Guid.NewGuid(),
+            BranchName = "Filial Norte",
+            Items =
+            [
+                new SaleItemRequest { ProductId = Guid.NewGuid(), ProductName = "Cerveja 350ml", Quantity = 10, UnitPrice = 4.50m },
+                new SaleItemRequest { ProductId = Guid.NewGuid(), ProductName = "Refrigerante 2L", Quantity = 2, UnitPrice = 8.00m }
+            ]
+        };
+
+        // When
+        var command = _configuration.CreateMapper().Map<UpdateSaleCommand>(request);
+
+        // Then
+        command.Should().BeEquivalentTo(request, options => options.WithStrictOrdering());
+        command.Id.Should().BeEmpty();
     }
 
     /// <summary>

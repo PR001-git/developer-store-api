@@ -3,7 +3,7 @@ using Bogus;
 namespace Ambev.DeveloperEvaluation.Functional.TestData;
 
 /// <summary>
-/// Generates create-sale bodies that pass every Sales rule, with Bogus.
+/// Generates create-sale and update-sale bodies that pass every Sales rule, with Bogus.
 /// </summary>
 public static class SaleRequestBodyTestData
 {
@@ -25,6 +25,19 @@ public static class SaleRequestBodyTestData
             BranchId: Guid.NewGuid(),
             BranchName: $"Filial {faker.Address.City()}",
             Items: items.Length > 0 ? items : [GenerateItem(faker.Random.Int(1, 20), Math.Round(faker.Random.Decimal(0.01m, 500m), 2))]);
+    }
+
+    /// <summary>
+    /// Generates a valid update body: a new header, as <see cref="GenerateValid"/> makes it but without a sale number,
+    /// and the given lines. A line with an existing line's product changes that line, and an active line whose product
+    /// is left out is cancelled (rule R10).
+    /// </summary>
+    /// <param name="items">The lines the sale must have. With none, the body gets one random line.</param>
+    /// <returns>A valid <see cref="UpdateSaleRequestBody"/>.</returns>
+    public static UpdateSaleRequestBody GenerateValidUpdate(params SaleItemRequestBody[] items)
+    {
+        var sale = GenerateValid(items);
+        return new UpdateSaleRequestBody(sale.SaleDate, sale.CustomerId, sale.CustomerName, sale.BranchId, sale.BranchName, sale.Items);
     }
 
     /// <summary>

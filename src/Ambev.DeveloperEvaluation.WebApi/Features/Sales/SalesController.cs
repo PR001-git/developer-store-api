@@ -2,8 +2,10 @@ using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSaleItem;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
+using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
 using Ambev.DeveloperEvaluation.WebApi.Common;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.WebApi.Features.Sales.UpdateSale;
 using AutoMapper;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -66,6 +68,31 @@ public sealed class SalesController : BaseController
         var result = await _mediator.Send(new GetSaleQuery(id), cancellationToken);
 
         return Ok(_mapper.Map<SaleResponse>(result), "Sale retrieved successfully");
+    }
+
+    /// <summary>
+    /// Replaces a sale's date, customer and branch, and reconciles its lines by product. A sent product updates its
+    /// active line or gets a new one, and an active line whose product isn't sent is cancelled. A <c>saleNumber</c>
+    /// in the body is ignored: the number never changes.
+    /// </summary>
+    /// <param name="id">The id of the sale.</param>
+    /// <param name="request">The new header and lines.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>200 with the sale after the update.</returns>
+    [HttpPut("{id}")]
+    [ProducesResponseType(typeof(ApiResponseWithData<SaleResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateSale([FromRoute] Guid id, [FromBody] UpdateSaleRequest request, CancellationToken cancellationToken)
+    {
+        var command = _mapper.Map<UpdateSaleCommand>(request);
+        command.Id = id;
+
+        var result = await _mediator.Send(command, cancellationToken);
+
+        return Ok(_mapper.Map<SaleResponse>(result), "Sale updated successfully");
     }
 
     /// <summary>

@@ -598,4 +598,331 @@ public sealed class SaleTests
         sale.UpdatedAt.Should().BeNull();
         sale.DomainEvents.Should().BeEmpty();
     }
+
+    /// <summary>
+    /// Tests rules R10 and R13: an update replaces the customer, the branch and the sale date, which is read as UTC
+    /// when it has no kind. The sale number stays the same (rule R12).
+    /// </summary>
+    [Fact(DisplayName = "Given an open sale When updating it with a date without a kind, a new customer and a new branch Then the header is replaced, the date is in UTC and the number is kept")]
+    public void Given_OpenSale_When_UpdatingHeader_Then_HeaderReplacedInUtcAndNumberKept()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale();
+        var saleNumber = sale.SaleNumber;
+        var customer = SaleTestData.GenerateCustomer();
+        var branch = SaleTestData.GenerateBranch();
+
+        // When
+        sale.Update(new DateTime(2026, 9, 25, 10, 0, 0, DateTimeKind.Unspecified), customer, branch,
+            [SaleTestData.GenerateItem(sale.Items.Single().Product.Id, 2, 8.00m)]);
+
+        // Then
+        sale.SaleDate.Should().Be(new DateTime(2026, 9, 25, 10, 0, 0, DateTimeKind.Utc));
+        sale.SaleDate.Kind.Should().Be(DateTimeKind.Utc);
+        sale.Customer.Should().Be(customer);
+        sale.Branch.Should().Be(branch);
+        sale.SaleNumber.Should().Be(saleNumber);
+    }
+
+    /// <summary>
+    /// Tests rule R10: an active line whose product is sent keeps its id, and gets the new quantity, price and name
+    /// and the discount of the new quantity.
+    /// </summary>
+    [Fact(DisplayName = "Given an active line of 4 items at 10% When updating its product to 10 items with a new price and name Then the line keeps its id and gets 20% and the new amounts")]
+    public void Given_ActiveLineAt10Percent_When_UpdatingItsProductTo10Items_Then_LineKeepsIdAndGets20Percent()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m));
+        var line = sale.Items.Single();
+        var lineId = line.Id;
+        var sent = SaleTestData.GenerateItem(line.Product.Id, 10, 5.00m);
+
+        // When
+        UpdateLines(sale, sent);
+
+        // Then (10 × 5.00 = 50.00; 20% of it is 10.00)
+        sale.Items.Should().ContainSingle().Which.Should().BeEquivalentTo(new
+        {
+            Id = lineId,
+            sent.Product,
+            Quantity = 10,
+            UnitPrice = 5.00m,
+            DiscountPercentage = 20m,
+            DiscountAmount = 10.00m,
+            TotalAmount = 40.00m,
+            IsCancelled = false
+        });
+    }
+
+    /// <summary>
+    /// Tests rule R10: a sent product with no line gets a new active line, with its own new id and its discount.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale with one line When updating it with that product and a new one Then the new product gets a new active line with its discount")]
+    public void Given_SaleWithOneLine_When_UpdatingWithNewProduct_Then_NewProductGetsNewLine()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m));
+        var existing = sale.Items.Single();
+        var added = SaleTestData.GenerateItem(5, 4.45m);
+
+        // When
+        UpdateLines(sale, SaleTestData.GenerateItem(existing.Product.Id, 4, 4.50m), added);
+
+        // Then (5 × 4.45 = 22.25; its 10% is 2.225, which rounds away from zero to 2.23)
+        sale.Items.Should().HaveCount(2);
+        var newLine = sale.Items.Should().ContainSingle(item => item.Product.Id == added.Product.Id).Subject;
+        newLine.Id.Should().NotBe(Guid.Empty).And.NotBe(existing.Id);
+        newLine.Should().BeEquivalentTo(new
+        {
+            added.Product,
+            Quantity = 5,
+            UnitPrice = 4.45m,
+            DiscountPercentage = 10m,
+            DiscountAmount = 2.23m,
+            TotalAmount = 20.02m,
+            IsCancelled = false
+        });
+    }
+
+    /// <summary>
+    /// Tests rule R10 and spec decision D6: an active line whose product isn't sent is cancelled, not removed. It keeps
+    /// its amounts as history and no longer counts in the total.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale with two active lines When updating it without the first product Then that line is cancelled with its amounts kept and leaves the total")]
+    public void Given_SaleWithTwoActiveLines_When_UpdatingWithoutFirstProduct_Then_ThatLineIsCancelledAndKeepsAmounts()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+        var dropped = sale.Items.First();
+        var kept = sale.Items.Last();
+
+        // When
+        UpdateLines(sale, SaleTestData.GenerateItem(kept.Product.Id, 3, 10.00m));
+
+        // Then (the dropped line keeps its 16.20; 30.00 is left)
+        sale.Items.Should().HaveCount(2).And.Contain(dropped);
+        dropped.Should().BeEquivalentTo(new { Quantity = 4, UnitPrice = 4.50m, DiscountAmount = 1.80m, TotalAmount = 16.20m, IsCancelled = true });
+        kept.IsCancelled.Should().BeFalse();
+        sale.TotalAmount.Should().Be(30.00m);
+    }
+
+    /// <summary>
+    /// Tests rule R10: a product whose only line was cancelled gets a new active line. The cancelled line stays as it
+    /// was, because cancelled lines never change.
+    /// </summary>
+    [Fact(DisplayName = "Given a product whose only line was cancelled When updating the sale with it again Then it gets a new active line and the cancelled line stays unchanged")]
+    public void Given_ProductWhoseLineWasCancelled_When_UpdatingWithItAgain_Then_GetsNewLineAndCancelledLineUnchanged()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+        var cancelled = sale.Items.First();
+        var cancelledProduct = cancelled.Product;
+        var active = sale.Items.Last();
+        sale.CancelItem(cancelled.Id);
+
+        // When
+        UpdateLines(sale,
+            SaleTestData.GenerateItem(cancelledProduct.Id, 10, 4.50m),
+            SaleTestData.GenerateItem(active.Product.Id, 3, 10.00m));
+
+        // Then (the new line is 10 × 4.50 at 20% = 36.00; with the other 30.00 the total is 66.00)
+        sale.Items.Should().HaveCount(3);
+        cancelled.Should().BeEquivalentTo(new { Product = cancelledProduct, Quantity = 4, TotalAmount = 16.20m, IsCancelled = true });
+        sale.Items.Should().ContainSingle(item => item.Product.Id == cancelledProduct.Id && !item.IsCancelled)
+            .Which.Should().BeEquivalentTo(new { Quantity = 10, DiscountPercentage = 20m, TotalAmount = 36.00m });
+        sale.TotalAmount.Should().Be(66.00m);
+    }
+
+    /// <summary>
+    /// Tests rules R3 and R13 after an update: the total is the sum of the active lines, and
+    /// <see cref="Sale.UpdatedAt"/> is now, in UTC.
+    /// </summary>
+    [Fact(DisplayName = "Given an open sale When updating its lines Then the total is the sum of the active lines and UpdatedAt is now in UTC")]
+    public void Given_OpenSale_When_UpdatingLines_Then_TotalOfActiveLinesAndUpdatedNowInUtc()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+        var before = DateTime.UtcNow;
+
+        // When (the first line goes to 10 × 4.50 at 20%, the second is dropped, and 2 × 8.00 is added)
+        UpdateLines(sale,
+            SaleTestData.GenerateItem(sale.Items.First().Product.Id, 10, 4.50m),
+            SaleTestData.GenerateItem(2, 8.00m));
+
+        // Then (36.00 + 16.00; the dropped 30.00 doesn't count)
+        var after = DateTime.UtcNow;
+        sale.TotalAmount.Should().Be(52.00m);
+        sale.UpdatedAt.Should().NotBeNull().And.BeOnOrAfter(before).And.BeOnOrBefore(after);
+        sale.UpdatedAt!.Value.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    /// <summary>
+    /// Tests the event sequence of §5.3: one <see cref="ItemCancelledEvent"/> per cancelled line, in line order, then
+    /// <see cref="SaleModifiedEvent"/> with the new total, all stamped with <see cref="Sale.UpdatedAt"/>.
+    /// </summary>
+    [Fact(DisplayName = "Given a loaded sale with three lines When updating it with only the third product Then it records ItemCancelledEvent for the first two lines, then SaleModifiedEvent")]
+    public void Given_LoadedSaleWithThreeLines_When_UpdatingWithOnlyThirdProduct_Then_RecordsItemCancelledTwiceThenSaleModified()
+    {
+        // Given (a loaded sale has no recorded events)
+        var sale = SaleTestData.CreateSale(
+            SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m), SaleTestData.GenerateItem(2, 8.00m));
+        sale.ClearDomainEvents();
+        var first = sale.Items.ElementAt(0);
+        var second = sale.Items.ElementAt(1);
+        var third = sale.Items.ElementAt(2);
+
+        // When
+        UpdateLines(sale, SaleTestData.GenerateItem(third.Product.Id, 2, 8.00m));
+
+        // Then
+        var updatedAt = sale.UpdatedAt!.Value;
+        sale.DomainEvents.Should().Equal(
+            new ItemCancelledEvent(sale.Id, sale.SaleNumber, first.Id, first.Product.Id, updatedAt),
+            new ItemCancelledEvent(sale.Id, sale.SaleNumber, second.Id, second.Product.Id, updatedAt),
+            new SaleModifiedEvent(sale.Id, sale.SaleNumber, 16.00m, updatedAt));
+    }
+
+    /// <summary>
+    /// Tests §5.3: an update that changes nothing still records <see cref="SaleModifiedEvent"/>, and only that. The
+    /// lines keep their ids and amounts, and none is cancelled.
+    /// </summary>
+    [Fact(DisplayName = "Given a loaded sale When updating it with the same header and lines Then only SaleModifiedEvent is recorded and the lines are unchanged")]
+    public void Given_LoadedSale_When_UpdatingWithSameHeaderAndLines_Then_OnlySaleModifiedIsRecorded()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+        sale.ClearDomainEvents();
+        var itemsBefore = sale.Items
+            .Select(item => new
+            {
+                item.Id, item.Product, item.Quantity, item.UnitPrice,
+                item.DiscountPercentage, item.DiscountAmount, item.TotalAmount, item.IsCancelled
+            })
+            .ToList();
+        var sameLines = sale.Items.Select(item => new SaleItemData(item.Product, item.Quantity, item.UnitPrice)).ToArray();
+
+        // When
+        UpdateLines(sale, sameLines);
+
+        // Then (16.20 + 30.00)
+        sale.DomainEvents.Should().ContainSingle().Which.Should().Be(
+            new SaleModifiedEvent(sale.Id, sale.SaleNumber, 46.20m, sale.UpdatedAt!.Value));
+        sale.Items.Should().BeEquivalentTo(itemsBefore, options => options.WithStrictOrdering());
+    }
+
+    /// <summary>
+    /// Tests rule R7: a cancelled sale is read-only, so an update is rejected and changes nothing.
+    /// </summary>
+    [Fact(DisplayName = "Given a cancelled sale When updating it Then it throws DomainException and changes nothing")]
+    public void Given_CancelledSale_When_Updating_Then_ThrowsAndChangesNothing()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m));
+        sale.Cancel();
+        sale.ClearDomainEvents();
+        var before = StateOf(sale);
+
+        // When
+        var act = () => sale.Update(DateTime.UtcNow, SaleTestData.GenerateCustomer(), SaleTestData.GenerateBranch(),
+            [SaleTestData.GenerateItem(sale.Items.Single().Product.Id, 10, 4.50m)]);
+
+        // Then
+        act.Should().Throw<DomainException>().WithMessage($"Sale {sale.SaleNumber} is cancelled and cannot be modified");
+        StateOf(sale).Should().BeEquivalentTo(before);
+        sale.DomainEvents.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests rule R5 in an update: the lines can't be emptied, and a rejected update changes nothing.
+    /// </summary>
+    [Fact(DisplayName = "Given an open sale When updating it with no items Then it throws DomainException and changes nothing")]
+    public void Given_OpenSale_When_UpdatingWithNoItems_Then_ThrowsAndChangesNothing()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m));
+        sale.ClearDomainEvents();
+        var before = StateOf(sale);
+
+        // When
+        var act = () => sale.Update(DateTime.UtcNow, SaleTestData.GenerateCustomer(), SaleTestData.GenerateBranch(), []);
+
+        // Then
+        act.Should().Throw<DomainException>().WithMessage("A sale must have at least one item");
+        StateOf(sale).Should().BeEquivalentTo(before);
+        sale.DomainEvents.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests rule R4 in an update: a product sent twice is rejected, and nothing changes.
+    /// </summary>
+    [Fact(DisplayName = "Given an open sale When updating it with the same product twice Then it throws DomainException and changes nothing")]
+    public void Given_OpenSale_When_UpdatingWithSameProductTwice_Then_ThrowsAndChangesNothing()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m));
+        sale.ClearDomainEvents();
+        var productId = sale.Items.Single().Product.Id;
+        var before = StateOf(sale);
+
+        // When
+        var act = () => sale.Update(DateTime.UtcNow, SaleTestData.GenerateCustomer(), SaleTestData.GenerateBranch(),
+            [SaleTestData.GenerateItem(productId, 10, 4.50m), SaleTestData.GenerateItem(productId, 2, 4.50m)]);
+
+        // Then
+        act.Should().Throw<DomainException>().WithMessage("Each product can appear only once in a sale");
+        StateOf(sale).Should().BeEquivalentTo(before);
+        sale.DomainEvents.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests rule R1 in an update: a quantity outside 1 to 20 is rejected. The valid line sent before it changes
+    /// nothing either, because every line is checked before anything changes.
+    /// </summary>
+    /// <param name="quantity">A quantity outside 1 to 20.</param>
+    /// <param name="message">The expected message, the same as create's.</param>
+    [Theory(DisplayName = "Given an open sale When updating it with a valid line and one with a quantity outside 1 to 20 Then it throws DomainException and changes nothing")]
+    [InlineData(0, "Quantity must be at least 1")]
+    [InlineData(21, "It's not possible to sell above 20 identical items")]
+    public void Given_OpenSale_When_UpdatingWithQuantityOutside1To20_Then_ThrowsAndChangesNothing(int quantity, string message)
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m));
+        sale.ClearDomainEvents();
+        var before = StateOf(sale);
+
+        // When
+        var act = () => sale.Update(DateTime.UtcNow, SaleTestData.GenerateCustomer(), SaleTestData.GenerateBranch(),
+            [SaleTestData.GenerateItem(sale.Items.Single().Product.Id, 10, 4.50m), SaleTestData.GenerateItem(quantity, 4.50m)]);
+
+        // Then
+        act.Should().Throw<DomainException>().WithMessage(message);
+        StateOf(sale).Should().BeEquivalentTo(before);
+        sale.DomainEvents.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Updates the sale's lines and keeps its header, for the tests that are about the lines.
+    /// </summary>
+    private static void UpdateLines(Sale sale, params SaleItemData[] items) =>
+        sale.Update(sale.SaleDate, sale.Customer, sale.Branch, items);
+
+    /// <summary>
+    /// Captures everything an update can change, so a test can check that a rejected update changed nothing.
+    /// </summary>
+    private static object StateOf(Sale sale) => new
+    {
+        sale.SaleDate,
+        sale.Customer,
+        sale.Branch,
+        sale.TotalAmount,
+        sale.IsCancelled,
+        sale.UpdatedAt,
+        Items = sale.Items
+            .Select(item => new
+            {
+                item.Id, item.Product, item.Quantity, item.UnitPrice,
+                item.DiscountPercentage, item.DiscountAmount, item.TotalAmount, item.IsCancelled
+            })
+            .ToList()
+    };
 }
