@@ -36,8 +36,18 @@ public static class SaleTestData
     /// <param name="quantity">The quantity of identical items.</param>
     /// <param name="unitPrice">The price of one item.</param>
     /// <returns>The line's input data.</returns>
-    public static SaleItemData GenerateItem(int quantity, decimal unitPrice) =>
-        new(new ExternalIdentity(Guid.NewGuid(), Faker.Commerce.ProductName()), quantity, unitPrice);
+    public static SaleItemData GenerateItem(int quantity, decimal unitPrice) => GenerateItem(Guid.NewGuid(), quantity, unitPrice);
+
+    /// <summary>
+    /// Generates a line for the given product, with a random product name. In an update, the id of an existing
+    /// line's product changes that line (rule R10).
+    /// </summary>
+    /// <param name="productId">The id of the product.</param>
+    /// <param name="quantity">The quantity of identical items.</param>
+    /// <param name="unitPrice">The price of one item.</param>
+    /// <returns>The line's input data.</returns>
+    public static SaleItemData GenerateItem(Guid productId, int quantity, decimal unitPrice) =>
+        new(new ExternalIdentity(productId, Faker.Commerce.ProductName()), quantity, unitPrice);
 
     /// <summary>
     /// Generates a line for a new product with a random quantity from 1 to 20 and a random price with 2 decimal places.

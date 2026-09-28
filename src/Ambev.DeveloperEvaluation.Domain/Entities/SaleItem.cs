@@ -85,4 +85,19 @@ public sealed class SaleItem : BaseEntity
     /// Cancels the line. Its amounts stay as they were, as history; the sale stops counting it in its total.
     /// </summary>
     internal void Cancel() => IsCancelled = true;
+
+    /// <summary>
+    /// Takes the product, quantity, price, discount and amounts of a line that the sale built from new input, and
+    /// keeps its own id (rule R10). The sale calls it only on an active line of the same product.
+    /// </summary>
+    /// <param name="line">The line built from the new input.</param>
+    internal void UpdateFrom(SaleItem line)
+    {
+        Product = line.Product;
+        Quantity = line.Quantity;
+        UnitPrice = line.UnitPrice;
+        DiscountPercentage = line.DiscountPercentage;
+        DiscountAmount = line.DiscountAmount;
+        TotalAmount = line.TotalAmount;
+    }
 }
