@@ -1,0 +1,26 @@
+.confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 20rem;
+  max-width: 28rem;
+  border: var(--rule-width-heavy) solid var(--color-ink);
+  border-radius: var(--radius-none);
+  padding: var(--space-6);
+  background: var(--color-surface);
+}
+
+.confirm-dialog__title {
+  font-size: var(--text-lg);
+}
+
+.confirm-dialog__body {
+  color: var(--color-ink-muted);
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}

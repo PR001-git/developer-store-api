@@ -1,0 +1,78 @@
+// Design tokens for the "ledger card" direction (see .impeccable/surfaces/portal-src-app.md).
+// Light only — a ledger card has no dark-mode analogue, and PRODUCT.md never asked for one.
+
+:root {
+  // --- Color roles -----------------------------------------------------
+  // Restrained strategy: neutrals only, plus exactly one accent (--color-stamp),
+  // which is reserved for void/destructive marks and nothing else.
+  --color-surface: #F6F3EC; // pale ruled card stock
+  --color-surface-input: #FFFFFF; // a control's own fill, so it reads as an interactive slot on the card
+  --color-rule: #C7C2B4; // hairline rules
+  --color-rule-strong: #8C8674; // a heavier rule: how a "raised" state is shown, never a shadow
+  --color-ink: #23211D; // near-black body/heading text
+  --color-ink-muted: #6B6656; // secondary text, tinted from the surface hue — never gray
+  --color-stamp: #A13D2E; // void/destructive marks only
+  --color-stamp-ink: #7A2E22; // pressed/darkened stamp, the "freshly inked" moment
+  --color-stamp-contrast: #F6F3EC; // text set on a stamp-filled surface
+
+  // --- Type --------------------------------------------------------------
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; // labels, body, controls
+  --font-mono: 'Courier Prime', ui-monospace, 'Courier New', monospace; // every tabular figure: money, quantities, dates, sale numbers, GUIDs
+
+  --text-xs: 0.75rem; // 12px — hints, descriptions
+  --text-sm: 0.875rem; // 14px — secondary text, table cells
+  --text-base: 1rem; // 16px — body
+  --text-md: 1.125rem; // 18px — emphasised body, sub-headings
+  --text-lg: 1.375rem; // 22px — section headings
+  --text-xl: 1.75rem; // 28px — page heading (h1), desktop
+  --text-2xl: 2.125rem; // 34px — reserved for the rare oversized stamp figure
+
+  --leading-tight: 1.2;
+  --leading-base: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  // --- Spacing (4px base) --------------------------------------------------
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  // --- Radii ---------------------------------------------------------------
+  // A card has square corners; only interactive controls get the single 2px radius.
+  --radius-control: 2px;
+  --radius-none: 0;
+
+  // --- Rule weight (stands in for an elevation system) ----------------------
+  --rule-width: 1px;
+  --rule-width-heavy: 2px;
+
+  // --- Motion ----------------------------------------------------------------
+  // The stamp is the one authored moment (see the shell/status primitives). Everything
+  // else — toasts, dialogs — is a plain, fast fade/translate with no bounce.
+  --duration-stamp: 120ms;
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1); // exponential ease-out from an already-visible default
+  --ease-linear: linear;
+
+  // --- Layout ------------------------------------------------------------
+  --breakpoint-phone: 640px;
+  --content-max-width: 1280px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-stamp: 0ms;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

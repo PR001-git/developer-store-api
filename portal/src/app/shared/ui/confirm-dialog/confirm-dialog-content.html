@@ -1,0 +1,10 @@
+<div class="confirm-dialog">
+  <h2 class="confirm-dialog__title" [id]="titleId">{{ options.title }}</h2>
+  @for (line of bodyLines; track line) {
+    <p class="confirm-dialog__body">{{ line }}</p>
+  }
+  <div class="confirm-dialog__actions">
+    <button type="button" class="button" [id]="keepId" (click)="keep()">{{ options.keepLabel }}</button>
+    <button type="button" class="button button--danger" (click)="confirm()">{{ options.confirmLabel }}</button>
+  </div>
+</div>

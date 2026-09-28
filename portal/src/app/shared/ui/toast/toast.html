@@ -1,0 +1,5 @@
+<div class="toast-outlet" role="status">
+  @for (toast of store.toasts(); track toast.id) {
+    <p class="toast-outlet__message">{{ toast.message }}</p>
+  }
+</div>
