@@ -1,5 +1,6 @@
 using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Exceptions;
+using Ambev.DeveloperEvaluation.Domain.ValueObjects;
 using Ambev.DeveloperEvaluation.Integration.Fixtures;
 using Ambev.DeveloperEvaluation.Integration.TestData;
 using Ambev.DeveloperEvaluation.ORM.Repositories;
@@ -281,5 +282,71 @@ public sealed class SaleRepositoryTests
         saved!.IsCancelled.Should().BeFalse();
         saved.TotalAmount.Should().Be(secondItem.TotalAmount);
         saved.Items.Should().ContainSingle(item => item.IsCancelled).Which.Id.Should().Be(firstItemId);
+    }
+
+    /// <summary>
+    /// Tests rule R10 against PostgreSQL: an update of a loaded sale is saved whole. The new line is inserted with
+    /// the id the domain gave it, which <c>ValueGeneratedNever</c> makes possible. The kept line gets its new
+    /// quantity and renamed product, the dropped line is stored cancelled, and the owned customer and branch are
+    /// replaced.
+    /// </summary>
+    [Fact(DisplayName = "Given a loaded sale updated with a new header, a changed line, a new line and a dropped line When updating it Then a new context reads every change")]
+    public async Task Given_LoadedSaleUpdated_When_Updating_Then_NewContextReadsEveryChange()
+    {
+        // Given (kept and dropped are the lines as created; the update context loads its own instances)
+        var sale = SaleTestData.GenerateValidSale(itemCount: 2);
+        var kept = sale.Items.First();
+        var dropped = sale.Items.Last();
+        await using (var createContext = _database.CreateContext())
+        {
+            await new SaleRepository(createContext).CreateAsync(sale);
+        }
+
+        await using var updateContext = _database.CreateContext();
+        var repository = new SaleRepository(updateContext);
+        var loaded = await repository.GetByIdAsync(sale.Id);
+        var saleDate = new DateTime(2026, 9, 25, 10, 0, 0, DateTimeKind.Utc);
+        var customer = new ExternalIdentity(Guid.NewGuid(), "Updated customer");
+        var branch = new ExternalIdentity(Guid.NewGuid(), "Updated branch");
+        var renamed = new ExternalIdentity(kept.Product.Id, "Renamed product");
+        var added = new SaleItemData(new ExternalIdentity(Guid.NewGuid(), "Added product"), 2, 8.00m);
+        loaded!.Update(saleDate, customer, branch, [new SaleItemData(renamed, 10, 4.50m), added]);
+        var addedId = loaded.Items.Single(item => item.Product.Id == added.Product.Id).Id;
+
+        // When
+        await repository.UpdateAsync(loaded);
+
+        // Then (10 × 4.50 at 20% = 36.00, plus 2 × 8.00 = 16.00)
+        await using var readContext = _database.CreateContext();
+        var saved = await new SaleRepository(readContext).GetByIdAsync(sale.Id);
+        saved.Should().NotBeNull();
+        saved!.Should().BeEquivalentTo(new
+        {
+            sale.SaleNumber,
+            SaleDate = saleDate,
+            Customer = customer,
+            Branch = branch,
+            TotalAmount = 52.00m,
+            IsCancelled = false
+        });
+        saved!.UpdatedAt.Should().BeCloseTo(loaded.UpdatedAt!.Value, TimeSpan.FromMicroseconds(1));
+        saved.Items.Should().BeEquivalentTo(new[]
+        {
+            new
+            {
+                kept.Id, Product = renamed, Quantity = 10, UnitPrice = 4.50m,
+                DiscountPercentage = 20m, DiscountAmount = 9.00m, TotalAmount = 36.00m, IsCancelled = false
+            },
+            new
+            {
+                dropped.Id, dropped.Product, dropped.Quantity, dropped.UnitPrice,
+                dropped.DiscountPercentage, dropped.DiscountAmount, dropped.TotalAmount, IsCancelled = true
+            },
+            new
+            {
+                Id = addedId, added.Product, added.Quantity, added.UnitPrice,
+                DiscountPercentage = 0m, DiscountAmount = 0.00m, TotalAmount = 16.00m, IsCancelled = false
+            }
+        });
     }
 }
