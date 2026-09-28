@@ -11,7 +11,8 @@ namespace Ambev.DeveloperEvaluation.Application.Sales;
 public sealed class SaleEventLogHandler :
     INotificationHandler<SaleCreatedEvent>,
     INotificationHandler<SaleCancelledEvent>,
-    INotificationHandler<ItemCancelledEvent>
+    INotificationHandler<ItemCancelledEvent>,
+    INotificationHandler<SaleModifiedEvent>
 {
     private readonly ILogger<SaleEventLogHandler> _logger;
 
@@ -47,6 +48,14 @@ public sealed class SaleEventLogHandler :
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A completed task.</returns>
     public Task Handle(ItemCancelledEvent notification, CancellationToken cancellationToken) => Log(notification);
+
+    /// <summary>
+    /// Logs a <see cref="SaleModifiedEvent"/>.
+    /// </summary>
+    /// <param name="notification">The event.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A completed task.</returns>
+    public Task Handle(SaleModifiedEvent notification, CancellationToken cancellationToken) => Log(notification);
 
     private Task Log(IDomainEvent domainEvent)
     {
