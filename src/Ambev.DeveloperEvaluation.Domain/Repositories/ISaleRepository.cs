@@ -28,6 +28,15 @@ public interface ISaleRepository
     Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Saves the changes made to a sale loaded with <see cref="GetByIdAsync"/>, its items included.
+    /// </summary>
+    /// <param name="sale">The loaded, changed sale.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task that completes when the changes are saved.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the sale wasn't loaded with <see cref="GetByIdAsync"/>.</exception>
+    Task UpdateAsync(Sale sale, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Tells whether a sale already has this sale number. The comparison is exact: case counts.
     /// </summary>
     /// <param name="saleNumber">The sale number, already trimmed.</param>

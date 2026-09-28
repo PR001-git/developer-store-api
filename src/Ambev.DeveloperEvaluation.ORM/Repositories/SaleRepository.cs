@@ -45,6 +45,15 @@ public sealed class SaleRepository : ISaleRepository
             .FirstOrDefaultAsync(sale => sale.Id == id, cancellationToken);
 
     /// <inheritdoc />
+    public async Task UpdateAsync(Sale sale, CancellationToken cancellationToken = default)
+    {
+        if (_context.Entry(sale).State == EntityState.Detached)
+            throw new InvalidOperationException("Only a sale loaded with GetByIdAsync can be updated");
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<bool> ExistsBySaleNumberAsync(string saleNumber, CancellationToken cancellationToken = default) =>
         _context.Sales.AnyAsync(sale => sale.SaleNumber == saleNumber, cancellationToken);
 
