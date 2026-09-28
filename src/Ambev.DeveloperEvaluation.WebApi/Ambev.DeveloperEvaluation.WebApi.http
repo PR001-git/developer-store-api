@@ -89,3 +89,40 @@ Authorization: Bearer {{token}}
 ### Cancel it again: a cancelled sale is read-only (409 BusinessRuleViolation)
 PATCH {{baseUrl}}/api/sales/{{saleId}}/cancel
 Authorization: Bearer {{token}}
+
+### Create a sale with two items, to cancel them one by one (201; 5 items get 10%, 2 items get none)
+# @name createTwoItemSale
+POST {{baseUrl}}/api/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleNumber": "S-{{$randomInt 100000 999999}}",
+  "saleDate": "2026-09-24T16:00:00Z",
+  "customerId": "3f2b8c1e-1111-4a5b-9c2d-000000000001",
+  "customerName": "Maria Silva",
+  "branchId": "3f2b8c1e-2222-4a5b-9c2d-000000000002",
+  "branchName": "Filial Centro",
+  "items": [
+    { "productId": "3f2b8c1e-3333-4a5b-9c2d-000000000003", "productName": "Cerveja 350ml", "quantity": 5, "unitPrice": 4.50 },
+    { "productId": "3f2b8c1e-4444-4a5b-9c2d-000000000004", "productName": "Refrigerante 2L", "quantity": 2, "unitPrice": 8.00 }
+  ]
+}
+
+###
+# The sale created above and its two items, in the order they were sent.
+@twoItemSaleId = {{createTwoItemSale.response.body.$.data.id}}
+@firstItemId = {{createTwoItemSale.response.body.$.data.items[0].id}}
+@secondItemId = {{createTwoItemSale.response.body.$.data.items[1].id}}
+
+### Cancel the first item: it leaves the total and the sale stays open (200; totalAmount 16.00)
+PATCH {{baseUrl}}/api/sales/{{twoItemSaleId}}/items/{{firstItemId}}/cancel
+Authorization: Bearer {{token}}
+
+### Cancel it again: the item is already cancelled (409 BusinessRuleViolation)
+PATCH {{baseUrl}}/api/sales/{{twoItemSaleId}}/items/{{firstItemId}}/cancel
+Authorization: Bearer {{token}}
+
+### Cancel the last active item: the sale is cancelled too (200; isCancelled true, totalAmount 0)
+PATCH {{baseUrl}}/api/sales/{{twoItemSaleId}}/items/{{secondItemId}}/cancel
+Authorization: Bearer {{token}}
