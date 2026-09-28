@@ -1,3 +1,4 @@
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Ambev.DeveloperEvaluation.Domain.ValueObjects;
 using AutoMapper;
@@ -35,6 +36,7 @@ public sealed class UpdateSaleHandler : IRequestHandler<UpdateSaleCommand, SaleR
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The sale after the update.</returns>
     /// <exception cref="KeyNotFoundException">Thrown when there is no sale with the id.</exception>
+    /// <exception cref="DomainException">Thrown when the sale is already cancelled (rule R7).</exception>
     public async Task<SaleResult> Handle(UpdateSaleCommand command, CancellationToken cancellationToken)
     {
         var sale = await _saleRepository.GetByIdAsync(command.Id, cancellationToken)
