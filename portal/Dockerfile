@@ -1,11 +1,11 @@
 FROM node:24-alpine AS build
-WORKDIR /portal
+WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+RUN npx ng build --configuration production
 
-FROM nginx:stable-alpine AS final
+FROM nginx:1.29-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /portal/dist/portal/browser /usr/share/nginx/html
+COPY --from=build /app/dist/portal/browser /usr/share/nginx/html
 EXPOSE 80

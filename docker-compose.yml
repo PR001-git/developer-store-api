@@ -17,11 +17,10 @@ services:
 
   ambev.developerevaluation.portal:
     container_name: ambev_developer_evaluation_portal
-    image: ${DOCKER_REGISTRY-}ambevdeveloperevaluationportal
     build:
-      context: portal
+      context: ./portal
     ports:
-      - "4200:80"
+      - "8081:80"
     depends_on:
       - ambev.developerevaluation.webapi
 
