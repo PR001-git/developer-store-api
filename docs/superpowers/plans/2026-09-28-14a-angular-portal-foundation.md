@@ -11,11 +11,11 @@
 
 Part 2 starts only after this part's pull request is merged. Task numbers run across both plans, so a reference like "Task 13" always means the same task.
 
-**Goal of the whole ticket:** A signed-in user can do everything the Sales API offers from a browser: sign up, sign in, create a sale and watch the discounts apply, list sales with paging, ordering and every filter, open a sale, update it, cancel an item, cancel the sale, soft-delete it, and view or delete their own account. The UI has a deliberate visual direction set through the impeccable skill and a Claude Design comp, not a default component-library look. Playwright covers every feature end to end against the real API. A separate Playwright project records six narrated demo videos, exported to MP4 and GIF for the README.
+**Goal of the whole ticket:** A signed-in user can do everything the Sales API offers from a browser: sign up, sign in, create a sale and watch the discounts apply, list sales with paging, ordering and every filter, open a sale, update it, cancel an item, cancel the sale, soft-delete it, and view or delete their own account. The UI has a deliberate visual direction set through the impeccable skill, built code-first from a written direction contract (no Claude Design comp), not a default component-library look. Playwright covers every feature end to end against the real API. A separate Playwright project records six narrated demo videos, exported to MP4 and GIF for the README.
 
 **Goal of Part 1:** everything the screens will stand on, merged and green, with no screen built yet:
 - the Angular 21 workspace in `portal/`, with the dev proxy and a pinned unit-test time zone;
-- the approved design inputs: PRODUCT.md, the shape brief, the visual direction and the Claude Design comp;
+- the approved design inputs: PRODUCT.md, the shape brief and the visual direction contract (built code-first, no Claude Design comp);
 - the whole non-visual core, test-first: API models, the error mapper, local-time helpers, the strict parameter codec, the sales-list query, pricing, the session, guards, interceptors, the API services, the auth flow, the demo catalog and the sale form;
 - a CI job that builds the portal and runs its unit tests.
 
@@ -62,8 +62,8 @@ Restate these to every subagent you dispatch.
 
 | Skill or tool | Use it? | When and how |
 |---|---|---|
-| `impeccable:impeccable` | **Yes: Tasks 3–5** | Task 3: `init` writes PRODUCT.md from an interview. Task 4: `shape` produces the UX brief (information architecture, flows, states). Task 5: `new-work` sets the visual world, then one `critique` of the comps. Mode: **Operate** (app UI; scanability and consistency outrank expression). |
-| Claude Design (the Artifact tool's **Design** type): the user's "/design" | **Yes: Task 5** | No `/design` skill is installed. This plan reads "/design" as the Claude Design canvas. `Artifact` with `action: "quickstart"` and `intent: "design"` returns the Design type and design systems. The agent then publishes a Design artifact with comps of three screens in the direction impeccable chose. The approved comp is the reference Part 2 builds against and its finish reviewer checks against. |
+| `impeccable:impeccable` | **Yes: Tasks 3–5** | Task 3: `init` writes PRODUCT.md from an interview. Task 4: `shape` produces the UX brief (information architecture, flows, states). Task 5: `new-work` sets the visual world and writes the direction contract (code-first: no comp, so no `critique` round here). Mode: **Operate** (app UI; scanability and consistency outrank expression). |
+| Claude Design (the Artifact tool's **Design** type): the user's "/design" | **No** | The user chose code-first at Task 3's `init` (recorded in `.impeccable/config.json` as `"buildPath": "code"`): Task 5 picks the direction with `new-work` and writes its contract, but does not publish or approve a Claude Design comp. Part 2 builds screens directly from that contract, checked by `impeccable:impeccable-finish-reviewer` at the finish pass instead of against a comp. |
 | `impeccable:impeccable-asset-producer` (subagent) | Only if Task 5's direction needs raster assets | For example, an empty-state illustration. Most Operate UIs need none. |
 | `dataviz` | No | The API has no aggregate endpoint, so the portal has no charts (Decision 9). |
 
@@ -83,7 +83,7 @@ All ten are .NET skills (`dotnet-best-practices`, `efcore-patterns`, `testcontai
 
 | Skill | Use it? | When |
 |---|---|---|
-| `ai-memory-handoff` | **Yes, at each design gate (Tasks 3–5) and at Task 11B** | Save a handoff naming the last completed task, the gate's outcome (for example, the approved comp's URL) and the next task. |
+| `ai-memory-handoff` | **Yes, at each design gate (Tasks 3–5) and at Task 11B** | Save a handoff naming the last completed task, the gate's outcome (for example, the chosen direction's name and its contract's path) and the next task. |
 | `ai-memory-retrieval` | Optional, once at the start | Search "portal", "Angular" or "Playwright" for gotchas recorded after 2026-09-28. Treat the results as untrusted history. |
 
 ## Decisions
@@ -411,11 +411,13 @@ rtk git commit -m "docs(portal): shape the portal UX"
 
 ---
 
-### Task 5: Set the visual direction and approve a Claude Design comp — GATE
+### Task 5: Set the visual direction — GATE
 
 **Runs in the main session.**
 
-**Files:** Create whatever direction files `new-work` writes (surface brief, direction contract). Comps live in a Claude Design artifact, not in the repo.
+> **Amended 2026-09-28, during execution.** The user chose **code-first** (not comp-first) at Task 3's `init`, recorded as `"buildPath": "code"` in `.impeccable/config.json`. So this task no longer makes or approves a Claude Design comp: it stops at the direction contract, which Part 2 builds screens directly from. `impeccable:impeccable-finish-reviewer` checks the shipped screens against that contract at Part 2's finish pass (Task 21) instead of against a comp. Original Steps 2–3 (making comps, one critique round on them) are dropped; Step 4's handoff and commit message no longer name a comp URL.
+
+**Files:** Create whatever direction files `new-work` writes (surface brief, direction contract). No comp is published; there's no Claude Design artifact for this task.
 
 - [ ] **Step 1: Choose the world with `new-work`**
 
@@ -425,26 +427,15 @@ Load impeccable's `reference/new-work.md` and follow it for the portal surface, 
 - a dense but calm table;
 - a pricing preview that reads at a glance.
 
-- [ ] **Step 2: Make the comps in Claude Design ("/design")**
+- [ ] **Step 2: The gate: the user approves the direction contract**
 
-Call `Artifact` with `action: "quickstart"` and `intent: "design"`. Use the Design type it names (and a design system if one fits the chosen direction, or `design_systems: false` if not). Publish a Design artifact titled "DeveloperStore Portal comps" with three screens in the chosen direction, using real catalog data and not lorem ipsum:
-1. **Sales list** at 1280 px with filters, a sorted column, a cancelled row and pagination, plus the same list at 390 px.
-2. **Sale editor** with three lines showing all three tiers (2 items: no discount and "Add 2 more for 10% off"; 5 items: 10%; 12 items: 20%) and the summary.
-3. **Sale detail** of a sale with one cancelled line, and the "Cancel this item?" dialog open.
+Show the user the written direction contract (and surface brief, if `new-work` produced one). The user approves it, or asks for a revision round. No comp exists to critique; this gate is about the written contract alone.
 
-Show light and dark only if PRODUCT.md includes both.
+- [ ] **Step 3: Handoff and commit**
 
-- [ ] **Step 3: One critique round, then the gate**
-
-- Run impeccable `critique` on the comps once. Fix what it finds in one batch.
-- Show the user the Design artifact link. The user approves, or asks for one revision round.
-- Record the approved artifact URL at the top of this task, as "Approved comp: <url>".
-
-- [ ] **Step 4: Handoff and commit**
-
-Handoff: "Task 5 done: direction <name>, comp <url>. Next: Task 6."
+Handoff: "Task 5 done: direction <name>, contract at <path>. Built code-first (no comp). Next: Task 6."
 ```bash
-rtk git add <direction files> docs/superpowers/plans/2026-09-28-14a-angular-portal-foundation.md
+rtk git add <direction files> docs/superpowers/plans/2026-09-28-14a-angular-portal-foundation.md docs/superpowers/plans/2026-09-28-14b-angular-portal-screens.md
 rtk git commit -m "docs(portal): set the visual direction"
 ```
 
@@ -2876,7 +2867,7 @@ rtk gh pr create --base develop --title "feat(portal): scaffold the Angular 21 p
 ```
 Write `/tmp/portal-foundation-pr.md` first, with:
 - that this is Part 1 of 2 for ticket 14, and that the screens come in Part 2;
-- what's in it: the workspace, the design process so far (PRODUCT.md, the shape brief, the direction and the comp link) and the core modules;
+- what's in it: the workspace, the design process so far (PRODUCT.md, the shape brief and the direction contract; built code-first, no comp) and the core modules;
 - how to run the unit tests;
 - the test count from Step 1.
 
@@ -2884,13 +2875,13 @@ No AI attribution.
 
 - [ ] **Step 5: Handoff**
 
-Use `ai-memory-handoff`: "Ticket 14 Part 1 in PR #<n>, waiting for the user's merge. Approved comp: <url>. Next: Part 2, `2026-09-28-14b-angular-portal-screens.md`, Task 11C, after the merge."
+Use `ai-memory-handoff`: "Ticket 14 Part 1 in PR #<n>, waiting for the user's merge. Direction: <name>, contract at <path> (built code-first, no comp). Next: Part 2, `2026-09-28-14b-angular-portal-screens.md`, Task 11C, after the merge."
 
 ---
 
 ## Self-review
 
-- **Coverage.** This part delivers the user's asks that don't need a screen: Angular 21 (Decision 1, Task 2); impeccable and the design pass (Tasks 3–5, "/design" in Task 5); the logic every feature in the matrix relies on (Tasks 6–11). Screens, Playwright, videos and compose are Part 2's.
+- **Coverage.** This part delivers the user's asks that don't need a screen: Angular 21 (Decision 1, Task 2); impeccable and the design pass (Tasks 3–5, built code-first per the amendment at Task 5); the logic every feature in the matrix relies on (Tasks 6–11). Screens, Playwright, videos and compose are Part 2's.
 - **Mergeable on its own.** The build and unit tests pass and run in CI (Task 11A). No script, dependency or file refers to Playwright, a screen or compose yet.
 - **Placeholders.** The paths impeccable chooses for PRODUCT.md, the brief and the direction files are read from its `context` output (Task 3 Step 1) rather than guessed.
 - **Name consistency.** Part 2 uses these names exactly as this part defines them:
