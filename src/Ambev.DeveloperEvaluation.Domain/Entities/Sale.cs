@@ -20,6 +20,13 @@ public sealed class Sale : BaseEntity
     public const int SaleNumberMaxLength = 50;
 
     /// <summary>
+    /// Builds the message for a sale number that another sale already has (rule R12).
+    /// </summary>
+    /// <param name="saleNumber">The sale number that is taken.</param>
+    /// <returns>The message, such as "Sale number S-000123 already exists".</returns>
+    public static string DuplicateSaleNumberMessage(string saleNumber) => $"Sale number {saleNumber} already exists";
+
+    /// <summary>
     /// The message for a sale without lines (rule R5).
     /// </summary>
     public const string NoItemsMessage = "A sale must have at least one item";

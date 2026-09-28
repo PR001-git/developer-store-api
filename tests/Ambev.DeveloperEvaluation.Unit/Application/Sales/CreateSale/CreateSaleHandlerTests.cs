@@ -2,7 +2,9 @@ using Ambev.DeveloperEvaluation.Application.Sales;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Events;
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
+using Ambev.DeveloperEvaluation.Domain.Services;
 using Ambev.DeveloperEvaluation.Unit.Application.Sales.TestData;
 using AutoMapper;
 using FluentAssertions;
@@ -20,6 +22,7 @@ namespace Ambev.DeveloperEvaluation.Unit.Application.Sales.CreateSale;
 public sealed class CreateSaleHandlerTests
 {
     private readonly ISaleRepository _saleRepository = Substitute.For<ISaleRepository>();
+    private readonly ISaleNumberGenerator _saleNumberGenerator = Substitute.For<ISaleNumberGenerator>();
     private readonly IPublisher _publisher = Substitute.For<IPublisher>();
     private readonly CreateSaleHandler _handler;
 
@@ -29,7 +32,7 @@ public sealed class CreateSaleHandlerTests
     public CreateSaleHandlerTests()
     {
         var mapper = new MapperConfiguration(config => config.AddProfile<SaleProfile>()).CreateMapper();
-        _handler = new CreateSaleHandler(_saleRepository, _publisher, mapper);
+        _handler = new CreateSaleHandler(_saleRepository, _saleNumberGenerator, _publisher, mapper);
     }
 
     /// <summary>
@@ -126,5 +129,72 @@ public sealed class CreateSaleHandlerTests
         // Then
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("The database is unavailable");
         _publisher.ReceivedCalls().Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests rule R12: a sent number that another sale has is rejected before anything is saved or published,
+    /// and the generator isn't asked for one.
+    /// </summary>
+    [Fact(DisplayName = "Given a sent sale number that already exists When handling Then it throws DomainException and saves nothing")]
+    public async Task Given_TakenSaleNumber_When_Handling_Then_ThrowsDomainExceptionAndSavesNothing()
+    {
+        // Given
+        var command = CreateSaleCommandTestData.GenerateValidCommand();
+        command.SaleNumber = "S-000123";
+        _saleRepository.ExistsBySaleNumberAsync("S-000123", Arg.Any<CancellationToken>()).Returns(true);
+
+        // When
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        // Then
+        await act.Should().ThrowAsync<DomainException>().WithMessage("Sale number S-000123 already exists");
+        await _saleRepository.DidNotReceive().CreateAsync(Arg.Any<Sale>(), Arg.Any<CancellationToken>());
+        await _saleNumberGenerator.DidNotReceive().NextAsync(Arg.Any<CancellationToken>());
+        _publisher.ReceivedCalls().Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests rule R12: without a number, the generator issues one and the sale is saved with it. There is no existence
+    /// check, because the generator already skips taken numbers.
+    /// </summary>
+    [Fact(DisplayName = "Given no sale number When handling Then it saves the sale with the generated number")]
+    public async Task Given_NoSaleNumber_When_Handling_Then_SavesSaleWithGeneratedNumber()
+    {
+        // Given
+        var command = CreateSaleCommandTestData.GenerateValidCommand();
+        command.SaleNumber = null;
+        _saleNumberGenerator.NextAsync(Arg.Any<CancellationToken>()).Returns("S-000042");
+        Sale? saved = null;
+        _saleRepository.When(repository => repository.CreateAsync(Arg.Any<Sale>(), Arg.Any<CancellationToken>()))
+            .Do(call => saved = call.Arg<Sale>());
+
+        // When
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Then
+        await _saleNumberGenerator.Received(1).NextAsync(Arg.Any<CancellationToken>());
+        await _saleRepository.DidNotReceive().ExistsBySaleNumberAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        saved.Should().NotBeNull();
+        saved!.SaleNumber.Should().Be("S-000042");
+        result.SaleNumber.Should().Be("S-000042");
+    }
+
+    /// <summary>
+    /// Tests rule R12: a sent number is checked trimmed, as the domain stores it, and kept. The generator is never called.
+    /// </summary>
+    [Fact(DisplayName = "Given a new sale number with surrounding spaces When handling Then it checks and keeps the trimmed number and never calls the generator")]
+    public async Task Given_NewSaleNumberWithSpaces_When_Handling_Then_KeepsTrimmedNumberWithoutGenerator()
+    {
+        // Given
+        var command = CreateSaleCommandTestData.GenerateValidCommand();
+        command.SaleNumber = "  S-000123  ";
+
+        // When
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Then
+        await _saleRepository.Received(1).ExistsBySaleNumberAsync("S-000123", Arg.Any<CancellationToken>());
+        await _saleNumberGenerator.DidNotReceive().NextAsync(Arg.Any<CancellationToken>());
+        result.SaleNumber.Should().Be("S-000123");
     }
 }

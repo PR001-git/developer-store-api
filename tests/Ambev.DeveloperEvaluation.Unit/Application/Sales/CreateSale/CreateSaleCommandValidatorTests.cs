@@ -32,18 +32,34 @@ public sealed class CreateSaleCommandValidatorTests
     }
 
     /// <summary>
-    /// Tests that the sale number is required. For now the client always sends it; ticket 06 makes it optional.
+    /// Tests rule R12: the sale number is optional. Without one the command is valid, and the handler generates it.
     /// </summary>
-    /// <param name="saleNumber">The sale number to try.</param>
-    [Theory(DisplayName = "Given a missing or blank sale number When validating Then SaleNumber fails as empty")]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Given_MissingOrBlankSaleNumber_When_Validating_Then_SaleNumberFails(string? saleNumber)
+    [Fact(DisplayName = "Given no sale number When validating Then there are no failures")]
+    public void Given_NoSaleNumber_When_Validating_Then_NoFailures()
     {
         // Given
         var command = CreateSaleCommandTestData.GenerateValidCommand();
-        command.SaleNumber = saleNumber!;
+        command.SaleNumber = null;
+
+        // When
+        var result = _validator.TestValidate(command);
+
+        // Then
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+
+    /// <summary>
+    /// Tests that a sent sale number can't be blank: only a missing one is generated.
+    /// </summary>
+    /// <param name="saleNumber">A blank sale number.</param>
+    [Theory(DisplayName = "Given a blank sale number When validating Then SaleNumber fails as empty")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Given_BlankSaleNumber_When_Validating_Then_SaleNumberFails(string saleNumber)
+    {
+        // Given
+        var command = CreateSaleCommandTestData.GenerateValidCommand();
+        command.SaleNumber = saleNumber;
 
         // When
         var result = _validator.TestValidate(command);
