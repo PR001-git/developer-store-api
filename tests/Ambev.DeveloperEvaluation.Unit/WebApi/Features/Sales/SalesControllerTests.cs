@@ -3,8 +3,10 @@ using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSaleItem;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
+using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.WebApi.Features.Sales.UpdateSale;
 using AutoMapper;
 using FluentAssertions;
 using MediatR;
@@ -37,6 +39,7 @@ public sealed class SalesControllerTests
         var mapper = new MapperConfiguration(config =>
         {
             config.AddProfile<CreateSaleProfile>();
+            config.AddProfile<UpdateSaleProfile>();
             config.AddProfile<SaleContractProfile>();
         }).CreateMapper();
         _controller = new SalesController(_mediator, mapper);
@@ -142,6 +145,47 @@ public sealed class SalesControllerTests
         var ok = response.Should().BeOfType<OkObjectResult>().Subject;
         MvcJson.Serialize(ok.Value).Should().Be(
             $$"""{"success":true,"message":"Sale item cancelled successfully","data":{{saleJson}}}""");
+    }
+
+    /// <summary>
+    /// Tests that updating a sale sends the command built from the request, with the id from the route, and returns
+    /// 200 with the sale in the envelope.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale id and an update request When updating the sale Then it sends the command with the route id and returns 200 with the sale")]
+    public async Task Given_SaleIdAndUpdateRequest_When_UpdatingSale_Then_SendsCommandAndReturns200WithSale()
+    {
+        // Given (the example sale after an update that moved its line to 10 items at 20%)
+        const string updatedSaleJson =
+            """{"id":"7f9c2a44-5555-4d1e-8a3b-000000000010","saleNumber":"S-000123","saleDate":"2026-09-24T14:30:00Z","customerId":"3f2b8c1e-1111-4a5b-9c2d-000000000001","customerName":"Maria Silva","branchId":"3f2b8c1e-2222-4a5b-9c2d-000000000002","branchName":"Filial Centro","totalAmount":36.00,"isCancelled":false,"createdAt":"2026-09-24T14:31:02Z","updatedAt":"2026-09-25T10:00:00Z","items":[{"id":"7f9c2a44-6666-4d1e-8a3b-000000000011","productId":"3f2b8c1e-3333-4a5b-9c2d-000000000003","productName":"Cerveja 350ml","quantity":10,"unitPrice":4.50,"discountPercentage":20,"discountAmount":9.00,"totalAmount":36.00,"isCancelled":false}]}""";
+        var request = new UpdateSaleRequest
+        {
+            SaleDate = new DateTime(2026, 9, 24, 14, 30, 0, DateTimeKind.Utc),
+            CustomerId = Guid.Parse("3f2b8c1e-1111-4a5b-9c2d-000000000001"),
+            CustomerName = "Maria Silva",
+            BranchId = Guid.Parse("3f2b8c1e-2222-4a5b-9c2d-000000000002"),
+            BranchName = "Filial Centro",
+            Items = [new SaleItemRequest { ProductId = Guid.Parse("3f2b8c1e-3333-4a5b-9c2d-000000000003"), ProductName = "Cerveja 350ml", Quantity = 10, UnitPrice = 4.50m }]
+        };
+        var result = ExampleResult();
+        result.TotalAmount = 36.00m;
+        result.UpdatedAt = new DateTime(2026, 9, 25, 10, 0, 0, DateTimeKind.Utc);
+        result.Items[0].Quantity = 10;
+        result.Items[0].DiscountPercentage = 20m;
+        result.Items[0].DiscountAmount = 9.00m;
+        result.Items[0].TotalAmount = 36.00m;
+        UpdateSaleCommand? sent = null;
+        _mediator.Send(Arg.Do<UpdateSaleCommand>(command => sent = command), Arg.Any<CancellationToken>())
+            .Returns(result);
+
+        // When
+        var response = await _controller.UpdateSale(result.Id, request, CancellationToken.None);
+
+        // Then
+        sent.Should().BeEquivalentTo(request);
+        sent!.Id.Should().Be(result.Id);
+        var ok = response.Should().BeOfType<OkObjectResult>().Subject;
+        MvcJson.Serialize(ok.Value).Should().Be(
+            $$"""{"success":true,"message":"Sale updated successfully","data":{{updatedSaleJson}}}""");
     }
 
     private static SaleResult ExampleResult() => new()
