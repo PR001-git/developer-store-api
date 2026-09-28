@@ -2,6 +2,7 @@ using Ambev.DeveloperEvaluation.Application.Sales;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
 using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Events;
+using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Ambev.DeveloperEvaluation.Unit.Domain.Entities.TestData;
 using AutoMapper;
@@ -117,6 +118,26 @@ public sealed class CancelSaleHandlerTests
 
         // Then
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("The database is unavailable");
+        _publisher.ReceivedCalls().Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests rule R7: an already cancelled sale is rejected before anything is saved or published.
+    /// </summary>
+    [Fact(DisplayName = "Given an already cancelled sale When cancelling Then it throws DomainException and saves and publishes nothing")]
+    public async Task Given_AlreadyCancelledSale_When_Cancelling_Then_ThrowsDomainExceptionAndSavesAndPublishesNothing()
+    {
+        // Given
+        var sale = GivenLoadedSale();
+        sale.Cancel();
+        sale.ClearDomainEvents();
+
+        // When
+        var act = () => _handler.Handle(new CancelSaleCommand(sale.Id), CancellationToken.None);
+
+        // Then
+        await act.Should().ThrowAsync<DomainException>().WithMessage(Sale.CancelledSaleMessage(sale.SaleNumber));
+        await _saleRepository.DidNotReceive().UpdateAsync(Arg.Any<Sale>(), Arg.Any<CancellationToken>());
         _publisher.ReceivedCalls().Should().BeEmpty();
     }
 
