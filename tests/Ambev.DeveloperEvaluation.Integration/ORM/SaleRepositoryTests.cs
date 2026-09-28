@@ -159,4 +159,54 @@ public sealed class SaleRepositoryTests
         await using var readContext = _database.CreateContext();
         (await readContext.Sales.CountAsync(sale => sale.SaleNumber == first.SaleNumber)).Should().Be(1);
     }
+
+    /// <summary>
+    /// Tests that <see cref="SaleRepository.UpdateAsync"/> saves the changes made to a loaded sale: a new context
+    /// reads it cancelled with its <c>UpdatedAt</c>, and its items and total stay as they were (rule R8).
+    /// </summary>
+    [Fact(DisplayName = "Given a loaded sale that was cancelled When updating it Then a new context reads it cancelled with its items and total unchanged")]
+    public async Task Given_LoadedSaleCancelled_When_Updating_Then_NewContextReadsItCancelled()
+    {
+        // Given
+        var sale = SaleTestData.GenerateValidSale(itemCount: 2);
+        await using (var createContext = _database.CreateContext())
+        {
+            await new SaleRepository(createContext).CreateAsync(sale);
+        }
+
+        await using var updateContext = _database.CreateContext();
+        var repository = new SaleRepository(updateContext);
+        var loaded = await repository.GetByIdAsync(sale.Id);
+        loaded!.Cancel();
+
+        // When
+        await repository.UpdateAsync(loaded);
+
+        // Then
+        await using var readContext = _database.CreateContext();
+        var saved = await new SaleRepository(readContext).GetByIdAsync(sale.Id);
+        saved.Should().NotBeNull();
+        saved!.IsCancelled.Should().BeTrue();
+        saved.UpdatedAt.Should().BeCloseTo(loaded.UpdatedAt!.Value, TimeSpan.FromMicroseconds(1));
+        saved.TotalAmount.Should().Be(sale.TotalAmount);
+        saved.Items.Should().BeEquivalentTo(sale.Items);
+    }
+
+    /// <summary>
+    /// Tests that a sale the context doesn't track is refused instead of silently not saved.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale the context doesn't track When updating it Then it throws InvalidOperationException")]
+    public async Task Given_UntrackedSale_When_Updating_Then_ThrowsInvalidOperationException()
+    {
+        // Given
+        var sale = SaleTestData.GenerateValidSale();
+        await using var context = _database.CreateContext();
+
+        // When
+        var act = () => new SaleRepository(context).UpdateAsync(sale);
+
+        // Then
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Only a sale loaded with GetByIdAsync can be updated");
+    }
 }

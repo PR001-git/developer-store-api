@@ -353,4 +353,88 @@ public sealed class SaleTests
         // Then
         sale.DomainEvents.Should().BeEmpty();
     }
+
+    /// <summary>
+    /// Tests that cancelling marks the sale cancelled and sets <see cref="Sale.UpdatedAt"/> to now, in UTC (rule R13).
+    /// </summary>
+    [Fact(DisplayName = "Given an open sale When cancelling it Then it is cancelled and updated now in UTC")]
+    public void Given_OpenSale_When_Cancelling_Then_IsCancelledAndUpdatedNowInUtc()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale();
+        var before = DateTime.UtcNow;
+
+        // When
+        sale.Cancel();
+
+        // Then
+        var after = DateTime.UtcNow;
+        sale.IsCancelled.Should().BeTrue();
+        sale.UpdatedAt.Should().NotBeNull().And.BeOnOrAfter(before).And.BeOnOrBefore(after);
+        sale.UpdatedAt!.Value.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    /// <summary>
+    /// Tests rule R8: a cancelled sale keeps its lines and total as the historical record.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale with discounted lines When cancelling it Then its items and total stay unchanged")]
+    public void Given_SaleWithLines_When_Cancelling_Then_ItemsAndTotalUnchanged()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+        var itemsBefore = sale.Items
+            .Select(item => new
+            {
+                item.Id, item.Product, item.Quantity, item.UnitPrice,
+                item.DiscountPercentage, item.DiscountAmount, item.TotalAmount, item.IsCancelled
+            })
+            .ToList();
+
+        // When
+        sale.Cancel();
+
+        // Then (16.20 + 30.00)
+        sale.Items.Should().BeEquivalentTo(itemsBefore, options => options.WithStrictOrdering());
+        sale.TotalAmount.Should().Be(46.20m);
+    }
+
+    /// <summary>
+    /// Tests that cancelling records exactly one <see cref="SaleCancelledEvent"/> with the §5.4 payload,
+    /// stamped with <see cref="Sale.UpdatedAt"/>.
+    /// </summary>
+    [Fact(DisplayName = "Given a loaded open sale When cancelling it Then it records one SaleCancelledEvent with the sale's data")]
+    public void Given_LoadedOpenSale_When_Cancelling_Then_RecordsSaleCancelledEvent()
+    {
+        // Given (a loaded sale has no recorded events)
+        var sale = SaleTestData.CreateSale();
+        sale.ClearDomainEvents();
+
+        // When
+        sale.Cancel();
+
+        // Then
+        sale.DomainEvents.Should().ContainSingle().Which.Should().Be(
+            new SaleCancelledEvent(SaleId: sale.Id, SaleNumber: sale.SaleNumber, OccurredAt: sale.UpdatedAt!.Value));
+    }
+
+    /// <summary>
+    /// Tests rule R7: a cancelled sale is read-only, so a second cancel is rejected and changes nothing.
+    /// </summary>
+    [Fact(DisplayName = "Given a cancelled sale When cancelling it again Then it throws DomainException and changes nothing")]
+    public void Given_CancelledSale_When_CancellingAgain_Then_ThrowsAndChangesNothing()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale();
+        sale.Cancel();
+        sale.ClearDomainEvents();
+        var updatedAt = sale.UpdatedAt;
+
+        // When
+        var act = () => sale.Cancel();
+
+        // Then
+        act.Should().Throw<DomainException>().WithMessage($"Sale {sale.SaleNumber} is cancelled and cannot be modified");
+        sale.UpdatedAt.Should().Be(updatedAt);
+        sale.DomainEvents.Should().BeEmpty();
+    }
 }

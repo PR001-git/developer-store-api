@@ -8,7 +8,9 @@ namespace Ambev.DeveloperEvaluation.Application.Sales;
 /// Writes each published sale event to the application log as a structured entry. It stands in for a message
 /// broker (spec decision D8), and it is the one handler for every sale event: later events add an interface here.
 /// </summary>
-public sealed class SaleEventLogHandler : INotificationHandler<SaleCreatedEvent>
+public sealed class SaleEventLogHandler :
+    INotificationHandler<SaleCreatedEvent>,
+    INotificationHandler<SaleCancelledEvent>
 {
     private readonly ILogger<SaleEventLogHandler> _logger;
 
@@ -28,6 +30,14 @@ public sealed class SaleEventLogHandler : INotificationHandler<SaleCreatedEvent>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A completed task.</returns>
     public Task Handle(SaleCreatedEvent notification, CancellationToken cancellationToken) => Log(notification);
+
+    /// <summary>
+    /// Logs a <see cref="SaleCancelledEvent"/>.
+    /// </summary>
+    /// <param name="notification">The event.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A completed task.</returns>
+    public Task Handle(SaleCancelledEvent notification, CancellationToken cancellationToken) => Log(notification);
 
     private Task Log(IDomainEvent domainEvent)
     {
