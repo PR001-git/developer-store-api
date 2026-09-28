@@ -174,16 +174,48 @@ public sealed class Sale : BaseEntity
     {
         EnsureNotCancelled();
 
+        MarkCancelled(DateTime.UtcNow);
+    }
+
+    /// <summary>
+    /// Cancels one line (rule R9): it drops out of the total and keeps its amounts as history, <see cref="UpdatedAt"/>
+    /// is set and an <see cref="ItemCancelledEvent"/> is recorded. When no active line is left, the sale is cancelled
+    /// too, its total is 0, and a <see cref="SaleCancelledEvent"/> follows (rule R6).
+    /// </summary>
+    /// <param name="itemId">The id of the line.</param>
+    /// <exception cref="DomainException">
+    /// Thrown when the sale is cancelled (rule R7), the line isn't in the sale, or the line is already cancelled (rule R9).
+    /// </exception>
+    public void CancelItem(Guid itemId)
+    {
+        EnsureNotCancelled();
+
+        var item = _items.SingleOrDefault(line => line.Id == itemId)
+            ?? throw new DomainException($"Sale {SaleNumber} has no item with ID {itemId}");
+        if (item.IsCancelled)
+            throw new DomainException($"Item {itemId} of sale {SaleNumber} is already cancelled");
+
         var now = DateTime.UtcNow;
-        IsCancelled = true;
+        item.Cancel();
+        RecalculateTotal();
         UpdatedAt = now;
-        _domainEvents.Add(new SaleCancelledEvent(Id, SaleNumber, now));
+        _domainEvents.Add(new ItemCancelledEvent(Id, SaleNumber, item.Id, item.Product.Id, now));
+
+        if (_items.TrueForAll(line => line.IsCancelled))
+            MarkCancelled(now);
     }
 
     private void EnsureNotCancelled()
     {
         if (IsCancelled)
             throw new DomainException(CancelledSaleMessage(SaleNumber));
+    }
+
+    private void MarkCancelled(DateTime now)
+    {
+        IsCancelled = true;
+        UpdatedAt = now;
+        _domainEvents.Add(new SaleCancelledEvent(Id, SaleNumber, now));
     }
 
     private static void EnsureValidLines(IReadOnlyCollection<SaleItemData> items)

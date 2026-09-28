@@ -437,4 +437,165 @@ public sealed class SaleTests
         sale.UpdatedAt.Should().Be(updatedAt);
         sale.DomainEvents.Should().BeEmpty();
     }
+
+    /// <summary>
+    /// Tests rule R9: a cancelled line drops out of the total and keeps its amounts as history, and the sale stays open
+    /// while another line is active.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale with two active lines When cancelling one Then that line is cancelled, the total drops to the other line and the sale stays open")]
+    public void Given_SaleWithTwoActiveLines_When_CancellingOne_Then_TotalDropsAndSaleStaysOpen()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+        var cancelled = sale.Items.First();
+        var active = sale.Items.Last();
+
+        // When
+        sale.CancelItem(cancelled.Id);
+
+        // Then (the cancelled line keeps its 16.20; 30.00 is left)
+        cancelled.IsCancelled.Should().BeTrue();
+        cancelled.TotalAmount.Should().Be(16.20m);
+        active.IsCancelled.Should().BeFalse();
+        sale.TotalAmount.Should().Be(30.00m);
+        sale.IsCancelled.Should().BeFalse();
+    }
+
+    /// <summary>
+    /// Tests rule R13: cancelling an item sets <see cref="Sale.UpdatedAt"/> to now, in UTC, so the <c>Sales</c> row
+    /// is written and its concurrency token covers item-only changes.
+    /// </summary>
+    [Fact(DisplayName = "Given an open sale When cancelling an item Then UpdatedAt is set to now in UTC")]
+    public void Given_OpenSale_When_CancellingItem_Then_UpdatedNowInUtc()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(), SaleTestData.GenerateItem());
+        var before = DateTime.UtcNow;
+
+        // When
+        sale.CancelItem(sale.Items.First().Id);
+
+        // Then
+        var after = DateTime.UtcNow;
+        sale.UpdatedAt.Should().NotBeNull().And.BeOnOrAfter(before).And.BeOnOrBefore(after);
+        sale.UpdatedAt!.Value.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    /// <summary>
+    /// Tests that cancelling a line records exactly one <see cref="ItemCancelledEvent"/> with the §5.4 payload,
+    /// stamped with <see cref="Sale.UpdatedAt"/>.
+    /// </summary>
+    [Fact(DisplayName = "Given a loaded sale with two active lines When cancelling one Then it records one ItemCancelledEvent with the sale's and the line's data")]
+    public void Given_LoadedSaleWithTwoActiveLines_When_CancellingOne_Then_RecordsItemCancelledEvent()
+    {
+        // Given (a loaded sale has no recorded events)
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(), SaleTestData.GenerateItem());
+        sale.ClearDomainEvents();
+        var item = sale.Items.First();
+
+        // When
+        sale.CancelItem(item.Id);
+
+        // Then
+        sale.DomainEvents.Should().ContainSingle().Which.Should().Be(new ItemCancelledEvent(
+            SaleId: sale.Id,
+            SaleNumber: sale.SaleNumber,
+            ItemId: item.Id,
+            ProductId: item.Product.Id,
+            OccurredAt: sale.UpdatedAt!.Value));
+    }
+
+    /// <summary>
+    /// Tests rule R6 and decision D5: cancelling the last active line cancels the sale too, the total becomes 0,
+    /// and <see cref="ItemCancelledEvent"/> is recorded before <see cref="SaleCancelledEvent"/>, both with one timestamp.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale with one active line left When cancelling it Then the sale is cancelled with total 0, and ItemCancelledEvent then SaleCancelledEvent are recorded")]
+    public void Given_SaleWithOneActiveLineLeft_When_CancellingIt_Then_SaleCancelledWithZeroTotal()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+        sale.CancelItem(sale.Items.First().Id);
+        sale.ClearDomainEvents();
+        var last = sale.Items.Last();
+
+        // When
+        sale.CancelItem(last.Id);
+
+        // Then
+        sale.IsCancelled.Should().BeTrue();
+        sale.TotalAmount.Should().Be(0m);
+        sale.Items.Should().OnlyContain(item => item.IsCancelled);
+        sale.DomainEvents.Should().Equal(
+            new ItemCancelledEvent(sale.Id, sale.SaleNumber, last.Id, last.Product.Id, sale.UpdatedAt!.Value),
+            new SaleCancelledEvent(sale.Id, sale.SaleNumber, sale.UpdatedAt!.Value));
+    }
+
+    /// <summary>
+    /// Tests rule R7: a cancelled sale is read-only, so cancelling one of its lines is rejected and changes nothing.
+    /// </summary>
+    [Fact(DisplayName = "Given a cancelled sale When cancelling one of its lines Then it throws DomainException and changes nothing")]
+    public void Given_CancelledSale_When_CancellingLine_Then_ThrowsAndChangesNothing()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m));
+        sale.Cancel();
+        sale.ClearDomainEvents();
+        var updatedAt = sale.UpdatedAt;
+        var item = sale.Items.Single();
+
+        // When
+        var act = () => sale.CancelItem(item.Id);
+
+        // Then
+        act.Should().Throw<DomainException>().WithMessage($"Sale {sale.SaleNumber} is cancelled and cannot be modified");
+        item.IsCancelled.Should().BeFalse();
+        sale.TotalAmount.Should().Be(16.20m);
+        sale.UpdatedAt.Should().Be(updatedAt);
+        sale.DomainEvents.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests rule R9: a line that is already cancelled can't be cancelled again, and nothing changes.
+    /// </summary>
+    [Fact(DisplayName = "Given a cancelled line When cancelling it again Then it throws DomainException and changes nothing")]
+    public void Given_CancelledLine_When_CancellingAgain_Then_ThrowsAndChangesNothing()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m), SaleTestData.GenerateItem(3, 10.00m));
+        var item = sale.Items.First();
+        sale.CancelItem(item.Id);
+        sale.ClearDomainEvents();
+        var updatedAt = sale.UpdatedAt;
+
+        // When
+        var act = () => sale.CancelItem(item.Id);
+
+        // Then
+        act.Should().Throw<DomainException>().WithMessage($"Item {item.Id} of sale {sale.SaleNumber} is already cancelled");
+        sale.TotalAmount.Should().Be(30.00m);
+        sale.IsCancelled.Should().BeFalse();
+        sale.UpdatedAt.Should().Be(updatedAt);
+        sale.DomainEvents.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests the domain's defence in depth: an id that isn't one of the sale's lines is rejected, and nothing changes.
+    /// </summary>
+    [Fact(DisplayName = "Given an item id that isn't in the sale When cancelling it Then it throws DomainException and changes nothing")]
+    public void Given_ItemIdNotInSale_When_CancellingIt_Then_ThrowsAndChangesNothing()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale(SaleTestData.GenerateItem(4, 4.50m));
+        sale.ClearDomainEvents();
+        var itemId = Guid.NewGuid();
+
+        // When
+        var act = () => sale.CancelItem(itemId);
+
+        // Then
+        act.Should().Throw<DomainException>().WithMessage($"Sale {sale.SaleNumber} has no item with ID {itemId}");
+        sale.Items.Should().OnlyContain(item => !item.IsCancelled);
+        sale.UpdatedAt.Should().BeNull();
+        sale.DomainEvents.Should().BeEmpty();
+    }
 }
