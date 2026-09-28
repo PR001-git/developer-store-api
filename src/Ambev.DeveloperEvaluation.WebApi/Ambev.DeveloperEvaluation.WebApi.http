@@ -82,6 +82,15 @@ Content-Type: application/json
 GET {{baseUrl}}/api/sales/{{saleId}}
 Authorization: Bearer {{token}}
 
+### List sales: page 1 of 5, newest first, then the highest total (200 with currentPage, totalPages and totalItems)
+# _order is "saleDate desc, totalAmount desc", URL-encoded.
+GET {{baseUrl}}/api/sales?_page=1&_size=5&_order=%22saleDate%20desc%2C%20totalAmount%20desc%22
+Authorization: Bearer {{token}}
+
+### List sales by a field that can't be sorted (400 ValidationError)
+GET {{baseUrl}}/api/sales?_order=price%20desc
+Authorization: Bearer {{token}}
+
 ### Update the sale: a new branch, the first product at 10 items (20%) and a second product (200; totalAmount 52.00)
 PUT {{baseUrl}}/api/sales/{{saleId}}
 Authorization: Bearer {{token}}

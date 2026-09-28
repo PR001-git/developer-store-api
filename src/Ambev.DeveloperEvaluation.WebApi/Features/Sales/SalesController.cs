@@ -2,9 +2,11 @@ using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSaleItem;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
+using Ambev.DeveloperEvaluation.Application.Sales.ListSales;
 using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
 using Ambev.DeveloperEvaluation.WebApi.Common;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.WebApi.Features.Sales.ListSales;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.UpdateSale;
 using AutoMapper;
 using MediatR;
@@ -50,6 +52,26 @@ public sealed class SalesController : BaseController
         var result = await _mediator.Send(_mapper.Map<CreateSaleCommand>(request), cancellationToken);
 
         return Created(nameof(GetSale), new { id = result.Id }, _mapper.Map<SaleResponse>(result), "Sale created successfully");
+    }
+
+    /// <summary>
+    /// Lists sales a page at a time, each with its items: <c>_page</c> (default 1), <c>_size</c> (default 10, at most 100)
+    /// and <c>_order</c> (default <c>saleDate desc</c>), as <c>.doc/general-api.md</c> describes.
+    /// </summary>
+    /// <param name="request">The paging and ordering parameters.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>200 with the page of sales and the paging totals.</returns>
+    [HttpGet]
+    [ProducesResponseType(typeof(PaginatedResponse<SaleResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ListSales([FromQuery] ListSalesRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(_mapper.Map<ListSalesQuery>(request), cancellationToken);
+        var page = new PaginatedList<SaleResponse>(
+            _mapper.Map<List<SaleResponse>>(result.Sales), result.TotalCount, result.Page, result.Size);
+
+        return OkPaginated(page, "Sales retrieved successfully");
     }
 
     /// <summary>

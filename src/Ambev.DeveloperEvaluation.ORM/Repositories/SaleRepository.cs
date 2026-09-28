@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Exceptions;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
@@ -52,6 +53,59 @@ public sealed class SaleRepository : ISaleRepository
 
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<SalePage> ListAsync(SaleListQuery query, CancellationToken cancellationToken = default)
+    {
+        var sales = _context.Sales.AsNoTracking();
+
+        var totalCount = await sales.CountAsync(cancellationToken);
+
+        // Past the last sale there is nothing to read. Computing in long also keeps a huge page from overflowing Skip.
+        var skip = (long)(query.Page - 1) * query.Size;
+        if (skip >= totalCount)
+            return new SalePage([], totalCount);
+
+        var page = await ApplyOrder(sales.Include(sale => sale.Items).AsSplitQuery(), query.Sorts)
+            .Skip((int)skip)
+            .Take(query.Size)
+            .ToListAsync(cancellationToken);
+
+        return new SalePage(page, totalCount);
+    }
+
+    /// <summary>
+    /// Orders by each sort in turn, then by id. Each field maps to a fixed expression; nothing is looked up by name.
+    /// </summary>
+    private static IOrderedQueryable<Sale> ApplyOrder(IQueryable<Sale> sales, IReadOnlyList<SaleSort> sorts)
+    {
+        IOrderedQueryable<Sale>? ordered = null;
+        foreach (var sort in sorts)
+        {
+            ordered = sort.Field switch
+            {
+                SaleSortField.SaleNumber => AppendOrdering(sales, ordered, sale => sale.SaleNumber, sort.Descending),
+                SaleSortField.SaleDate => AppendOrdering(sales, ordered, sale => sale.SaleDate, sort.Descending),
+                SaleSortField.CustomerName => AppendOrdering(sales, ordered, sale => sale.Customer.Name, sort.Descending),
+                SaleSortField.BranchName => AppendOrdering(sales, ordered, sale => sale.Branch.Name, sort.Descending),
+                SaleSortField.TotalAmount => AppendOrdering(sales, ordered, sale => sale.TotalAmount, sort.Descending),
+                SaleSortField.IsCancelled => AppendOrdering(sales, ordered, sale => sale.IsCancelled, sort.Descending),
+                _ => throw new ArgumentOutOfRangeException(nameof(sorts), sort.Field, "The sort field has no ordering expression.")
+            };
+        }
+
+        return ordered is null ? sales.OrderBy(sale => sale.Id) : ordered.ThenBy(sale => sale.Id);
+    }
+
+    private static IOrderedQueryable<Sale> AppendOrdering<TKey>(
+        IQueryable<Sale> sales, IOrderedQueryable<Sale>? ordered, Expression<Func<Sale, TKey>> key, bool descending) =>
+        (ordered, descending) switch
+        {
+            (null, false) => sales.OrderBy(key),
+            (null, true) => sales.OrderByDescending(key),
+            ({ } current, false) => current.ThenBy(key),
+            ({ } current, true) => current.ThenByDescending(key)
+        };
 
     /// <inheritdoc />
     public Task<bool> ExistsBySaleNumberAsync(string saleNumber, CancellationToken cancellationToken = default) =>

@@ -45,7 +45,7 @@ public class BaseController : ControllerBase
         base.CreatedAtAction(actionName, routeValues, new ApiResponseWithData<T> { Success = true, Message = message, Data = data });
 
     /// <summary>
-    /// Returns 200 with the paged body: <c>{success, message, data}</c> plus <c>currentPage</c>, <c>totalPages</c> and <c>totalCount</c>.
+    /// Returns 200 with the paged body: <c>{success, message, data}</c> plus <c>currentPage</c>, <c>totalPages</c> and <c>totalItems</c>.
     /// </summary>
     /// <typeparam name="T">The type of the items.</typeparam>
     /// <param name="pagedList">The page of items and its paging information.</param>
@@ -59,6 +59,6 @@ public class BaseController : ControllerBase
             Data = pagedList,
             CurrentPage = pagedList.CurrentPage,
             TotalPages = pagedList.TotalPages,
-            TotalCount = pagedList.TotalCount
+            TotalItems = pagedList.TotalCount
         });
 }

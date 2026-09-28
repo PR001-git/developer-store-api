@@ -35,7 +35,29 @@ internal static class SaleJson
         root.GetProperty("success").GetBoolean().Should().BeTrue();
         root.GetProperty("message").GetString().Should().Be(message);
 
-        var sale = root.GetProperty("data");
+        ShouldBeSale(root.GetProperty("data"));
+    }
+
+    /// <summary>
+    /// Checks that the body is exactly <c>{success, message, data, currentPage, totalPages, totalItems}</c>, built once,
+    /// and that every sale in <c>data</c> (at least one) and each of its lines have exactly the documented fields.
+    /// </summary>
+    /// <param name="response">A paged success response of the Sales API.</param>
+    /// <param name="message">The expected success message.</param>
+    /// <returns>A task that completes when the body has been checked.</returns>
+    public static async Task ShouldBeSalePageEnvelopeAsync(HttpResponseMessage response, string message)
+    {
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        root.EnumerateObject().Select(property => property.Name).Should()
+            .Equal("success", "message", "data", "currentPage", "totalPages", "totalItems");
+        root.GetProperty("success").GetBoolean().Should().BeTrue();
+        root.GetProperty("message").GetString().Should().Be(message);
+        root.GetProperty("data").EnumerateArray().Should().NotBeEmpty().And.AllSatisfy(ShouldBeSale);
+    }
+
+    private static void ShouldBeSale(JsonElement sale)
+    {
         sale.EnumerateObject().Select(property => property.Name).Should().Equal(SaleFields);
         sale.GetProperty("items").EnumerateArray().Should().NotBeEmpty()
             .And.AllSatisfy(item => item.EnumerateObject().Select(property => property.Name).Should().Equal(ItemFields));

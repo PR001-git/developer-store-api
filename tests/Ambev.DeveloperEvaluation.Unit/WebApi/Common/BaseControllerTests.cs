@@ -81,7 +81,7 @@ public sealed class BaseControllerTests
         // Then
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         MvcJson.Serialize(ok.Value).Should().Be(
-            """{"success":true,"message":"Sales retrieved successfully","data":["S-000003","S-000004"],"currentPage":2,"totalPages":3,"totalCount":5}""");
+            """{"success":true,"message":"Sales retrieved successfully","data":["S-000003","S-000004"],"currentPage":2,"totalPages":3,"totalItems":5}""");
     }
 
     /// <summary>
