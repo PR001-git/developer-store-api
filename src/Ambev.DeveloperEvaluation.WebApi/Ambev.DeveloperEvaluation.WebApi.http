@@ -91,6 +91,15 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/api/sales?_order=price%20desc
 Authorization: Bearer {{token}}
 
+### List sales filtered: customer names ending in "silva", open, sold from 11:30 at -03:00 through the end of 2026-09-24, totals of 20.00 or more (200; the sale created above is in data, and totalItems counts only matches)
+# _maxSaleDate has no time, so it covers the whole day. Only a leading or trailing * is a wildcard.
+GET {{baseUrl}}/api/sales?customerName=*silva&isCancelled=false&_minSaleDate=2026-09-24T11:30:00-03:00&_maxSaleDate=2026-09-24&_minTotalAmount=20&_order=totalAmount%20desc
+Authorization: Bearer {{token}}
+
+### List sales with a minimum total above the maximum (400 ValidationError)
+GET {{baseUrl}}/api/sales?_minTotalAmount=50&_maxTotalAmount=10
+Authorization: Bearer {{token}}
+
 ### Update the sale: a new branch, the first product at 10 items (20%) and a second product (200; totalAmount 52.00)
 PUT {{baseUrl}}/api/sales/{{saleId}}
 Authorization: Bearer {{token}}

@@ -37,12 +37,13 @@ public interface ISaleRepository
     Task UpdateAsync(Sale sale, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Reads one page of sales with their items, untracked. The sales follow <see cref="SaleListQuery.Sorts"/>,
+    /// Reads one page of the sales that match <see cref="SaleListQuery.Filter"/>, with their items, untracked.
+    /// The sales follow <see cref="SaleListQuery.Sorts"/>,
     /// then their id, so sales with equal keys always come in one order and pages never overlap.
     /// </summary>
     /// <param name="query">The page, its size and the order.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The page, and the number of sales in all.</returns>
+    /// <returns>The page, and how many sales match in all.</returns>
     Task<SalePage> ListAsync(SaleListQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>

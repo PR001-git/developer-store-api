@@ -55,10 +55,11 @@ public sealed class SalesController : BaseController
     }
 
     /// <summary>
-    /// Lists sales a page at a time, each with its items: <c>_page</c> (default 1), <c>_size</c> (default 10, at most 100)
-    /// and <c>_order</c> (default <c>saleDate desc</c>), as <c>.doc/general-api.md</c> describes.
+    /// Lists the sales that match the filters of <see cref="ListSalesRequest"/>, a page at a time, each with its items:
+    /// <c>_page</c> (default 1), <c>_size</c> (default 10, at most 100) and <c>_order</c> (default <c>saleDate desc</c>),
+    /// as <c>.doc/general-api.md</c> describes. An omitted filter doesn't filter.
     /// </summary>
-    /// <param name="request">The paging and ordering parameters.</param>
+    /// <param name="request">The paging, ordering and filter parameters.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>200 with the page of sales and the paging totals.</returns>
     [HttpGet]

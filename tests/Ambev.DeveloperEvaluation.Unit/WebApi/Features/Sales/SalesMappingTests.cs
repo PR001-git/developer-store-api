@@ -162,4 +162,32 @@ public sealed class SalesMappingTests
         // Then
         query.Should().BeEquivalentTo(new { Page = 2, Size = (int?)null, Order = "saleDate desc" });
     }
+
+    /// <summary>
+    /// Tests that every filter of the list request reaches the query unchanged.
+    /// </summary>
+    [Fact(DisplayName = "Given a list-sales request with every filter When mapping it to ListSalesQuery Then every filter is copied")]
+    public void Given_ListSalesRequestWithEveryFilter_When_MappingToQuery_Then_FiltersAreCopied()
+    {
+        // Given
+        var request = new ListSalesRequest
+        {
+            SaleNumber = "S-*",
+            CustomerName = "*maria",
+            BranchName = "filial*",
+            CustomerId = Guid.NewGuid(),
+            BranchId = Guid.NewGuid(),
+            IsCancelled = true,
+            MinSaleDate = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc),
+            MaxSaleDate = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Unspecified),
+            MinTotalAmount = 10.00m,
+            MaxTotalAmount = 99.99m
+        };
+
+        // When
+        var query = _configuration.CreateMapper().Map<ListSalesQuery>(request);
+
+        // Then
+        query.Should().BeEquivalentTo(request);
+    }
 }

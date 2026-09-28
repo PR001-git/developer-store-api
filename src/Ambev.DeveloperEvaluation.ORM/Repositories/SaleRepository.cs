@@ -57,7 +57,8 @@ public sealed class SaleRepository : ISaleRepository
     /// <inheritdoc />
     public async Task<SalePage> ListAsync(SaleListQuery query, CancellationToken cancellationToken = default)
     {
-        var sales = _context.Sales.AsNoTracking();
+        // Filtered before the count, so the total counts only the matching sales.
+        var sales = ApplyFilter(_context.Sales.AsNoTracking(), query.Filter);
 
         var totalCount = await sales.CountAsync(cancellationToken);
 
@@ -72,6 +73,48 @@ public sealed class SaleRepository : ISaleRepository
             .ToListAsync(cancellationToken);
 
         return new SalePage(page, totalCount);
+    }
+
+    /// <summary>
+    /// Keeps the sales that match every criterion the filter sets (spec §7.3). Text criteria use ILIKE with an escape
+    /// character; every value is a parameter, never part of the SQL text.
+    /// </summary>
+    private static IQueryable<Sale> ApplyFilter(IQueryable<Sale> sales, SaleListFilter filter)
+    {
+        if (filter.SaleNumber is not null)
+        {
+            var pattern = LikePattern.FromWildcards(filter.SaleNumber);
+            sales = sales.Where(sale => EF.Functions.ILike(sale.SaleNumber, pattern, LikePattern.EscapeCharacter));
+        }
+
+        if (filter.CustomerName is not null)
+        {
+            var pattern = LikePattern.FromWildcards(filter.CustomerName);
+            sales = sales.Where(sale => EF.Functions.ILike(sale.Customer.Name, pattern, LikePattern.EscapeCharacter));
+        }
+
+        if (filter.BranchName is not null)
+        {
+            var pattern = LikePattern.FromWildcards(filter.BranchName);
+            sales = sales.Where(sale => EF.Functions.ILike(sale.Branch.Name, pattern, LikePattern.EscapeCharacter));
+        }
+
+        if (filter.CustomerId is { } customerId)
+            sales = sales.Where(sale => sale.Customer.Id == customerId);
+        if (filter.BranchId is { } branchId)
+            sales = sales.Where(sale => sale.Branch.Id == branchId);
+        if (filter.IsCancelled is { } isCancelled)
+            sales = sales.Where(sale => sale.IsCancelled == isCancelled);
+        if (filter.MinSaleDate is { } minSaleDate)
+            sales = sales.Where(sale => sale.SaleDate >= minSaleDate);
+        if (filter.MaxSaleDate is { } maxSaleDate)
+            sales = sales.Where(sale => sale.SaleDate <= maxSaleDate);
+        if (filter.MinTotalAmount is { } minTotalAmount)
+            sales = sales.Where(sale => sale.TotalAmount >= minTotalAmount);
+        if (filter.MaxTotalAmount is { } maxTotalAmount)
+            sales = sales.Where(sale => sale.TotalAmount <= maxTotalAmount);
+
+        return sales;
     }
 
     /// <summary>

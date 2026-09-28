@@ -90,4 +90,62 @@ public sealed class ListSalesHandlerTests
             Items = new[] { new { sale.Items.Single().Id, TotalAmount = 16.20m } }
         });
     }
+
+    /// <summary>
+    /// Tests that without filters the repository gets no criteria.
+    /// </summary>
+    [Fact(DisplayName = "Given no filters When listing Then the repository gets no criteria")]
+    public async Task Given_NoFilters_When_Listing_Then_RepositoryGetsNoCriteria()
+    {
+        // When
+        await _handler.Handle(new ListSalesQuery(), CancellationToken.None);
+
+        // Then
+        _sent.Should().NotBeNull();
+        _sent!.Filter.Should().Be(SaleListFilter.None);
+    }
+
+    /// <summary>
+    /// Tests that every filter reaches the repository: text and exact values as sent, dates as inclusive UTC bounds.
+    /// </summary>
+    [Fact(DisplayName = "Given every filter When listing Then the repository gets them, with the dates as inclusive UTC bounds")]
+    public async Task Given_EveryFilter_When_Listing_Then_RepositoryGetsThemWithUtcDateBounds()
+    {
+        // Given
+        var customerId = Guid.NewGuid();
+        var branchId = Guid.NewGuid();
+
+        // When
+        await _handler.Handle(new ListSalesQuery
+        {
+            SaleNumber = "S-*",
+            CustomerName = "*maria",
+            BranchName = "*50%*",
+            CustomerId = customerId,
+            BranchId = branchId,
+            IsCancelled = false,
+            MinSaleDate = new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Unspecified),
+            MaxSaleDate = new DateTime(2026, 1, 31, 0, 0, 0, DateTimeKind.Unspecified),
+            MinTotalAmount = 10.00m,
+            MaxTotalAmount = 99.99m
+        }, CancellationToken.None);
+
+        // Then
+        _sent.Should().NotBeNull();
+        _sent!.Filter.Should().Be(new SaleListFilter
+        {
+            SaleNumber = "S-*",
+            CustomerName = "*maria",
+            BranchName = "*50%*",
+            CustomerId = customerId,
+            BranchId = branchId,
+            IsCancelled = false,
+            MinSaleDate = new DateTime(2026, 1, 1, 9, 0, 0, DateTimeKind.Utc),
+            MaxSaleDate = new DateTime(2026, 1, 31, 23, 59, 59, 999, 999, DateTimeKind.Utc),
+            MinTotalAmount = 10.00m,
+            MaxTotalAmount = 99.99m
+        });
+        _sent.Filter.MinSaleDate!.Value.Kind.Should().Be(DateTimeKind.Utc);
+        _sent.Filter.MaxSaleDate!.Value.Kind.Should().Be(DateTimeKind.Utc);
+    }
 }
