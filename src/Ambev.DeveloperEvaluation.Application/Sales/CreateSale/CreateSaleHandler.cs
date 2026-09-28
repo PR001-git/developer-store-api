@@ -54,7 +54,7 @@ public sealed class CreateSaleHandler : IRequestHandler<CreateSaleCommand, SaleR
             command.SaleDate,
             new ExternalIdentity(command.CustomerId, command.CustomerName),
             new ExternalIdentity(command.BranchId, command.BranchName),
-            command.Items.Select(ToItemData).ToList());
+            command.Items.Select(item => item.ToItemData()).ToList());
 
         await _saleRepository.CreateAsync(sale, cancellationToken);
         await _publisher.PublishDomainEventsAsync(sale, cancellationToken);
@@ -73,7 +73,4 @@ public sealed class CreateSaleHandler : IRequestHandler<CreateSaleCommand, SaleR
 
         return saleNumber;
     }
-
-    private static SaleItemData ToItemData(SaleItemInput item) =>
-        new(new ExternalIdentity(item.ProductId, item.ProductName), item.Quantity, item.UnitPrice);
 }
