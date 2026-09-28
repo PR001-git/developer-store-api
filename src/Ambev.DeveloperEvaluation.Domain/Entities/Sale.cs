@@ -20,6 +20,13 @@ public sealed class Sale : BaseEntity
     public const int SaleNumberMaxLength = 50;
 
     /// <summary>
+    /// Builds the message for a change to a cancelled sale, which is read-only (rule R7).
+    /// </summary>
+    /// <param name="saleNumber">The number of the cancelled sale.</param>
+    /// <returns>The message, such as "Sale S-000123 is cancelled and cannot be modified".</returns>
+    public static string CancelledSaleMessage(string saleNumber) => $"Sale {saleNumber} is cancelled and cannot be modified";
+
+    /// <summary>
     /// Builds the message for a sale number that another sale already has (rule R12).
     /// </summary>
     /// <param name="saleNumber">The sale number that is taken.</param>
@@ -157,6 +164,27 @@ public sealed class Sale : BaseEntity
     /// Forgets the recorded events, once they have been published.
     /// </summary>
     public void ClearDomainEvents() => _domainEvents.Clear();
+
+    /// <summary>
+    /// Cancels the sale. Its items and total stay as they were, as the historical record (rule R8);
+    /// <see cref="UpdatedAt"/> is set and a <see cref="SaleCancelledEvent"/> is recorded.
+    /// </summary>
+    /// <exception cref="DomainException">Thrown when the sale is already cancelled (rule R7).</exception>
+    public void Cancel()
+    {
+        EnsureNotCancelled();
+
+        var now = DateTime.UtcNow;
+        IsCancelled = true;
+        UpdatedAt = now;
+        _domainEvents.Add(new SaleCancelledEvent(Id, SaleNumber, now));
+    }
+
+    private void EnsureNotCancelled()
+    {
+        if (IsCancelled)
+            throw new DomainException(CancelledSaleMessage(SaleNumber));
+    }
 
     private static void EnsureValidLines(IReadOnlyCollection<SaleItemData> items)
     {
