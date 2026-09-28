@@ -92,6 +92,7 @@ export function addItem(fb: NonNullableFormBuilder, form: SaleForm, item?: Parti
   form.controls.items.push(createItemForm(fb, item));
 }
 
+/** Assumes `form.valid`; callers must check that first, since a null quantity/unitPrice here becomes 0, not an error. */
 export function toUpdateRequest(form: SaleForm): UpdateSaleRequest {
   const value = form.getRawValue();
   const saleDate = fromDateTimeLocal(value.saleDate);
