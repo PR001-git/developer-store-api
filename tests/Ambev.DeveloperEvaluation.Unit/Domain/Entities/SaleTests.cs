@@ -126,6 +126,64 @@ public sealed class SaleTests
     }
 
     /// <summary>
+    /// Tests rules R11 and R13: deleting marks the sale deleted, and sets <see cref="Sale.DeletedAt"/> and
+    /// <see cref="Sale.UpdatedAt"/> to the same time, now, in UTC.
+    /// </summary>
+    [Fact(DisplayName = "Given an open sale When deleting it Then it is deleted, with DeletedAt and UpdatedAt set to now in UTC")]
+    public void Given_OpenSale_When_Deleting_Then_IsDeletedWithTimestampsNowInUtc()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale();
+        var before = DateTime.UtcNow;
+
+        // When
+        sale.Delete();
+
+        // Then
+        var after = DateTime.UtcNow;
+        sale.IsDeleted.Should().BeTrue();
+        sale.DeletedAt.Should().NotBeNull().And.BeOnOrAfter(before).And.BeOnOrBefore(after);
+        sale.DeletedAt!.Value.Kind.Should().Be(DateTimeKind.Utc);
+        sale.UpdatedAt.Should().Be(sale.DeletedAt);
+    }
+
+    /// <summary>
+    /// Tests rule R11: a delete records no event, so nothing is published.
+    /// </summary>
+    [Fact(DisplayName = "Given a loaded sale When deleting it Then it records no event")]
+    public void Given_LoadedSale_When_Deleting_Then_RecordsNoEvent()
+    {
+        // Given (a loaded sale has no recorded events)
+        var sale = SaleTestData.CreateSale();
+        sale.ClearDomainEvents();
+
+        // When
+        sale.Delete();
+
+        // Then
+        sale.DomainEvents.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Tests rule R7: a cancelled sale is read-only, but it can still be deleted, and it stays cancelled.
+    /// </summary>
+    [Fact(DisplayName = "Given a cancelled sale When deleting it Then it is deleted and stays cancelled")]
+    public void Given_CancelledSale_When_Deleting_Then_IsDeletedAndStaysCancelled()
+    {
+        // Given
+        var sale = SaleTestData.CreateSale();
+        sale.Cancel();
+
+        // When
+        var act = () => sale.Delete();
+
+        // Then
+        act.Should().NotThrow();
+        sale.IsDeleted.Should().BeTrue();
+        sale.IsCancelled.Should().BeTrue();
+    }
+
+    /// <summary>
     /// Tests rule R13: a sale date in UTC, or without a kind (no offset in the JSON), is stored as that UTC time.
     /// </summary>
     /// <param name="kind">The kind of the sale date that is sent.</param>
