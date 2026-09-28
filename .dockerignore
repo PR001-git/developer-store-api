@@ -27,6 +27,7 @@ README.md
 .doc
 docs
 .slopwatch
+portal
 TestResults
 coverage-report.sh
 coverage-report.bat

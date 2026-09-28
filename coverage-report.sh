@@ -10,10 +10,10 @@ dotnet build  Ambev.DeveloperEvaluation.sln --configuration Release --no-restore
 
 echo "Run tests with coverage"
 dotnet test  Ambev.DeveloperEvaluation.sln --no-restore --verbosity normal \
-/p:CollectCoverage=true \
-/p:CoverletOutputFormat=cobertura \
-/p:CoverletOutput=./TestResults/coverage.cobertura.xml \
-/p:Exclude="[*]*.Program,[*]*.Startup,[*]*.Migrations.*"
+-p:CollectCoverage=true \
+-p:CoverletOutputFormat=cobertura \
+-p:CoverletOutput=./TestResults/coverage.cobertura.xml \
+-p:Exclude="[*]*.Program%2c[*]*.Startup%2c[*]*.Migrations.*"
 
 echo "Generate coverage report"
 reportgenerator \
