@@ -1,0 +1,12 @@
+<div class="field">
+  <label class="field__label" [for]="controlId()">{{ label() }}</label>
+  <div class="field__control">
+    <ng-content />
+  </div>
+  @if (description(); as text) {
+    <p class="field__description" [id]="descriptionId()">{{ text }}</p>
+  }
+  @if (errorMessage(); as message) {
+    <p class="field__error" role="alert" [id]="errorId()">{{ message }}</p>
+  }
+</div>

@@ -1,0 +1,170 @@
+// Resets, typography defaults and the focus-visible ring. Tokens come from tokens.scss,
+// already loaded as :root custom properties, so plain var() references work everywhere.
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  // Prevent Safari/iOS text auto-inflation from fighting the type scale on rotate.
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-base);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+dl,
+dd,
+dt,
+figure {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+// Every tabular figure — money, quantities, dates, sale numbers, GUIDs — reads from the
+// mono face with real tabular-nums, so the "stamped" character is genuine, not simulated.
+.tabular,
+[data-tabular] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+// A native control's own skin: square card, a 2px radius only here (per the direction contract —
+// interactive controls get the radius, surfaces stay square), a hairline rule, no shadow.
+input:not([type='radio']):not([type='checkbox']),
+select,
+textarea {
+  width: 100%;
+  background: var(--color-surface-input);
+  border: var(--rule-width) solid var(--color-rule-strong);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
+}
+
+input[type='radio'],
+input[type='checkbox'] {
+  accent-color: var(--color-ink);
+}
+
+// A shared button skin: the safe/default action; `.button--primary` is the one filled control
+// per screen (per the FIRST VIEWPORT block); `.button--danger` is reserved for void/destructive
+// actions, in the one accent the palette spends.
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: var(--rule-width-heavy) solid var(--color-ink);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+  transition: background-color var(--duration-fast) var(--ease-settle);
+}
+
+.button:disabled {
+  border-color: var(--color-rule);
+  color: var(--color-ink-muted);
+}
+
+.button--primary {
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.button--danger {
+  border-color: var(--color-stamp);
+  color: var(--color-stamp);
+}
+
+// Browser surfaces the design still has to own, per the craft floor: selection, focus ring.
+::selection {
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

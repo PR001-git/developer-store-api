@@ -1,0 +1,41 @@
+services:
+  ambev.developerevaluation.webapi:
+    container_name: ambev_developer_evaluation_webapi
+    image: ${DOCKER_REGISTRY-}ambevdeveloperevaluationwebapi
+    build:
+      context: .
+      dockerfile: src/Ambev.DeveloperEvaluation.WebApi/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ConnectionStrings__DefaultConnection=Host=ambev.developerevaluation.database;Port=5432;Database=developer_evaluation;Username=developer;Password=ev@luAt10n
+    ports:
+      - "8080:8080"
+    depends_on:
+      ambev.developerevaluation.database:
+        condition: service_healthy
+
+  ambev.developerevaluation.portal:
+    container_name: ambev_developer_evaluation_portal
+    build:
+      context: ./portal
+    ports:
+      - "8081:80"
+    depends_on:
+      - ambev.developerevaluation.webapi
+
+  ambev.developerevaluation.database:
+    container_name: ambev_developer_evaluation_database
+    image: postgres:13
+    environment:
+      POSTGRES_DB: developer_evaluation
+      POSTGRES_USER: developer
+      POSTGRES_PASSWORD: ev@luAt10n
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-U", "developer", "-d", "developer_evaluation"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
