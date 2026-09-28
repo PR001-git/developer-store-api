@@ -71,6 +71,21 @@ public static class ApiHttpExtensions
     }
 
     /// <summary>
+    /// Cancels one line with <c>PATCH /api/sales/{id}/items/{itemId}/cancel</c>, for tests whose subject is a later step,
+    /// and fails the test if that doesn't return 200.
+    /// </summary>
+    /// <param name="client">A client that holds a token.</param>
+    /// <param name="saleId">The id of the sale.</param>
+    /// <param name="itemId">The id of the line to cancel.</param>
+    /// <returns>The sale after the change, as the response returned it.</returns>
+    public static async Task<SaleResponseBody> CancelSaleItemAsync(this HttpClient client, Guid saleId, Guid itemId)
+    {
+        using var response = await client.PatchAsync($"/api/sales/{saleId}/items/{itemId}/cancel", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return await response.ReadSaleAsync();
+    }
+
+    /// <summary>
     /// Reads the <c>data</c> property of a success envelope <c>{success, message, data}</c>.
     /// </summary>
     /// <param name="response">A success response of the API.</param>

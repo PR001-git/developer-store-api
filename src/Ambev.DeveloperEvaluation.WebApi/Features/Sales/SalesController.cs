@@ -1,4 +1,5 @@
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
+using Ambev.DeveloperEvaluation.Application.Sales.CancelSaleItem;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
 using Ambev.DeveloperEvaluation.WebApi.Common;
@@ -84,5 +85,25 @@ public sealed class SalesController : BaseController
         var result = await _mediator.Send(new CancelSaleCommand(id), cancellationToken);
 
         return Ok(_mapper.Map<SaleResponse>(result), "Sale cancelled successfully");
+    }
+
+    /// <summary>
+    /// Cancels one line of a sale. It drops out of the total; cancelling the last active line also cancels the sale.
+    /// </summary>
+    /// <param name="id">The id of the sale.</param>
+    /// <param name="itemId">The id of the line.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>200 with the sale after the change.</returns>
+    [HttpPatch("{id}/items/{itemId}/cancel")]
+    [ProducesResponseType(typeof(ApiResponseWithData<SaleResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CancelSaleItem([FromRoute] Guid id, [FromRoute] Guid itemId, CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new CancelSaleItemCommand(id, itemId), cancellationToken);
+
+        return Ok(_mapper.Map<SaleResponse>(result), "Sale item cancelled successfully");
     }
 }

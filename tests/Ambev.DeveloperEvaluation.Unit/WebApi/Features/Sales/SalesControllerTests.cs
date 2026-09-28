@@ -1,5 +1,6 @@
 using Ambev.DeveloperEvaluation.Application.Sales;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
+using Ambev.DeveloperEvaluation.Application.Sales.CancelSaleItem;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales;
@@ -115,6 +116,32 @@ public sealed class SalesControllerTests
         var ok = response.Should().BeOfType<OkObjectResult>().Subject;
         MvcJson.Serialize(ok.Value).Should().Be(
             $$"""{"success":true,"message":"Sale cancelled successfully","data":{{cancelledSaleJson}}}""");
+    }
+
+    /// <summary>
+    /// Tests that cancelling an item sends the command for the route ids and returns 200 with the sale in the envelope.
+    /// </summary>
+    [Fact(DisplayName = "Given a sale id and an item id When cancelling the item Then it sends the command and returns 200 with the sale")]
+    public async Task Given_SaleIdAndItemId_When_CancellingSaleItem_Then_Returns200WithSale()
+    {
+        // Given (the example sale's only line was cancelled, so the sale was cancelled too)
+        const string saleJson =
+            """{"id":"7f9c2a44-5555-4d1e-8a3b-000000000010","saleNumber":"S-000123","saleDate":"2026-09-24T14:30:00Z","customerId":"3f2b8c1e-1111-4a5b-9c2d-000000000001","customerName":"Maria Silva","branchId":"3f2b8c1e-2222-4a5b-9c2d-000000000002","branchName":"Filial Centro","totalAmount":0,"isCancelled":true,"createdAt":"2026-09-24T14:31:02Z","updatedAt":"2026-09-25T10:00:00Z","items":[{"id":"7f9c2a44-6666-4d1e-8a3b-000000000011","productId":"3f2b8c1e-3333-4a5b-9c2d-000000000003","productName":"Cerveja 350ml","quantity":5,"unitPrice":4.50,"discountPercentage":10,"discountAmount":2.25,"totalAmount":20.25,"isCancelled":true}]}""";
+        var result = ExampleResult();
+        result.TotalAmount = 0m;
+        result.IsCancelled = true;
+        result.UpdatedAt = new DateTime(2026, 9, 25, 10, 0, 0, DateTimeKind.Utc);
+        result.Items[0].IsCancelled = true;
+        var itemId = result.Items[0].Id;
+        _mediator.Send(new CancelSaleItemCommand(result.Id, itemId), Arg.Any<CancellationToken>()).Returns(result);
+
+        // When
+        var response = await _controller.CancelSaleItem(result.Id, itemId, CancellationToken.None);
+
+        // Then
+        var ok = response.Should().BeOfType<OkObjectResult>().Subject;
+        MvcJson.Serialize(ok.Value).Should().Be(
+            $$"""{"success":true,"message":"Sale item cancelled successfully","data":{{saleJson}}}""");
     }
 
     private static SaleResult ExampleResult() => new()
