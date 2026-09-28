@@ -24,7 +24,7 @@ public interface ISaleRepository
     /// </summary>
     /// <param name="id">The id of the sale.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The sale, or <c>null</c> if there is none with that id.</returns>
+    /// <returns>The sale, or <c>null</c> if there is none with that id or it was soft-deleted.</returns>
     Task<Sale?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -47,7 +47,8 @@ public interface ISaleRepository
     Task<SalePage> ListAsync(SaleListQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Tells whether a sale already has this sale number. The comparison is exact: case counts.
+    /// Tells whether a sale already has this sale number, soft-deleted sales included (rule R12).
+    /// The comparison is exact: case counts.
     /// </summary>
     /// <param name="saleNumber">The sale number, already trimmed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>

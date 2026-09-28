@@ -152,7 +152,10 @@ public sealed class SaleRepository : ISaleRepository
 
     /// <inheritdoc />
     public Task<bool> ExistsBySaleNumberAsync(string saleNumber, CancellationToken cancellationToken = default) =>
-        _context.Sales.AnyAsync(sale => sale.SaleNumber == saleNumber, cancellationToken);
+        // A soft-deleted sale keeps its number (rule R12), so this check ignores the soft-delete filter.
+        _context.Sales
+            .IgnoreQueryFilters()
+            .AnyAsync(sale => sale.SaleNumber == saleNumber, cancellationToken);
 
     private static bool IsSaleNumberConflict(DbUpdateException exception) =>
         exception.InnerException is PostgresException
