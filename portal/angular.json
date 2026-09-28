@@ -30,6 +30,13 @@
               }
             ],
             "styles": [
+              "@angular/cdk/overlay-prebuilt.css",
+              "@fontsource/inter/400.css",
+              "@fontsource/inter/500.css",
+              "@fontsource/inter/600.css",
+              "@fontsource/inter/700.css",
+              "@fontsource/courier-prime/400.css",
+              "@fontsource/courier-prime/700.css",
               "src/styles.scss"
             ]
           },

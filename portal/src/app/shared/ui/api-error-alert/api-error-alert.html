@@ -1,0 +1,7 @@
+<div class="api-error-alert" role="alert">
+  <p class="api-error-alert__title">{{ error().title }}</p>
+  <p class="api-error-alert__detail">{{ error().detail }}</p>
+  @if (buttonLabel(); as label) {
+    <button type="button" class="button" (click)="retry.emit()">{{ label }}</button>
+  }
+</div>
