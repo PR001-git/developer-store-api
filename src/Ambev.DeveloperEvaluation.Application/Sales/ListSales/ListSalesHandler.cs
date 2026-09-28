@@ -5,7 +5,7 @@ using MediatR;
 namespace Ambev.DeveloperEvaluation.Application.Sales.ListSales;
 
 /// <summary>
-/// Handles <see cref="ListSalesQuery"/>: applies the defaults, parses the order and reads the page.
+/// Handles <see cref="ListSalesQuery"/>: applies the defaults, parses the order, builds the filter and reads the page.
 /// </summary>
 public sealed class ListSalesHandler : IRequestHandler<ListSalesQuery, ListSalesResult>
 {
@@ -34,9 +34,26 @@ public sealed class ListSalesHandler : IRequestHandler<ListSalesQuery, ListSales
         var page = query.Page ?? ListSalesQuery.DefaultPage;
         var size = query.Size ?? ListSalesQuery.DefaultSize;
 
-        var sales = await _saleRepository.ListAsync(
-            new SaleListQuery(page, size, SaleOrderParser.Parse(query.Order)), cancellationToken);
+        var listQuery = new SaleListQuery(page, size, SaleOrderParser.Parse(query.Order)) { Filter = ToFilter(query) };
+        var sales = await _saleRepository.ListAsync(listQuery, cancellationToken);
 
         return new ListSalesResult(_mapper.Map<List<SaleResult>>(sales.Sales), page, size, sales.TotalCount);
     }
+
+    /// <summary>
+    /// Copies the filters, turning the sale-date limits into inclusive UTC bounds.
+    /// </summary>
+    private static SaleListFilter ToFilter(ListSalesQuery query) => new()
+    {
+        SaleNumber = query.SaleNumber,
+        CustomerName = query.CustomerName,
+        BranchName = query.BranchName,
+        CustomerId = query.CustomerId,
+        BranchId = query.BranchId,
+        IsCancelled = query.IsCancelled,
+        MinSaleDate = query.MinSaleDate is { } min ? SaleDateBounds.LowerBound(min) : null,
+        MaxSaleDate = query.MaxSaleDate is { } max ? SaleDateBounds.UpperBound(max) : null,
+        MinTotalAmount = query.MinTotalAmount,
+        MaxTotalAmount = query.MaxTotalAmount
+    };
 }
