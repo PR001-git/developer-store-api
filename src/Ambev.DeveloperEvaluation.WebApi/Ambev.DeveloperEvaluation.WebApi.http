@@ -82,6 +82,39 @@ Content-Type: application/json
 GET {{baseUrl}}/api/sales/{{saleId}}
 Authorization: Bearer {{token}}
 
+### Update the sale: a new branch, the first product at 10 items (20%) and a second product (200; totalAmount 52.00)
+PUT {{baseUrl}}/api/sales/{{saleId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleDate": "2026-09-24T15:00:00Z",
+  "customerId": "3f2b8c1e-1111-4a5b-9c2d-000000000001",
+  "customerName": "Maria Silva",
+  "branchId": "3f2b8c1e-5555-4a5b-9c2d-000000000005",
+  "branchName": "Filial Norte",
+  "items": [
+    { "productId": "3f2b8c1e-3333-4a5b-9c2d-000000000003", "productName": "Cerveja 350ml", "quantity": 10, "unitPrice": 4.50 },
+    { "productId": "3f2b8c1e-4444-4a5b-9c2d-000000000004", "productName": "Refrigerante 2L", "quantity": 2, "unitPrice": 8.00 }
+  ]
+}
+
+### Update it without the first product: its line is cancelled, not deleted (200; totalAmount 16.00)
+PUT {{baseUrl}}/api/sales/{{saleId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleDate": "2026-09-24T15:00:00Z",
+  "customerId": "3f2b8c1e-1111-4a5b-9c2d-000000000001",
+  "customerName": "Maria Silva",
+  "branchId": "3f2b8c1e-5555-4a5b-9c2d-000000000005",
+  "branchName": "Filial Norte",
+  "items": [
+    { "productId": "3f2b8c1e-4444-4a5b-9c2d-000000000004", "productName": "Refrigerante 2L", "quantity": 2, "unitPrice": 8.00 }
+  ]
+}
+
 ### Cancel the sale: its items and total stay as they were (200 with isCancelled true)
 PATCH {{baseUrl}}/api/sales/{{saleId}}/cancel
 Authorization: Bearer {{token}}
@@ -89,6 +122,22 @@ Authorization: Bearer {{token}}
 ### Cancel it again: a cancelled sale is read-only (409 BusinessRuleViolation)
 PATCH {{baseUrl}}/api/sales/{{saleId}}/cancel
 Authorization: Bearer {{token}}
+
+### Update the cancelled sale: a cancelled sale is read-only (409 BusinessRuleViolation)
+PUT {{baseUrl}}/api/sales/{{saleId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleDate": "2026-09-24T15:00:00Z",
+  "customerId": "3f2b8c1e-1111-4a5b-9c2d-000000000001",
+  "customerName": "Maria Silva",
+  "branchId": "3f2b8c1e-5555-4a5b-9c2d-000000000005",
+  "branchName": "Filial Norte",
+  "items": [
+    { "productId": "3f2b8c1e-4444-4a5b-9c2d-000000000004", "productName": "Refrigerante 2L", "quantity": 2, "unitPrice": 8.00 }
+  ]
+}
 
 ### Create a sale with two items, to cancel them one by one (201; 5 items get 10%, 2 items get none)
 # @name createTwoItemSale
