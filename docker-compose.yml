@@ -15,6 +15,16 @@ services:
       ambev.developerevaluation.database:
         condition: service_healthy
 
+  ambev.developerevaluation.portal:
+    container_name: ambev_developer_evaluation_portal
+    image: ${DOCKER_REGISTRY-}ambevdeveloperevaluationportal
+    build:
+      context: portal
+    ports:
+      - "4200:80"
+    depends_on:
+      - ambev.developerevaluation.webapi
+
   ambev.developerevaluation.database:
     container_name: ambev_developer_evaluation_database
     image: postgres:13
