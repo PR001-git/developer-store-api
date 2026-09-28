@@ -1,8 +1,10 @@
 using Ambev.DeveloperEvaluation.Application.Sales;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.Application.Sales.ListSales;
 using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.WebApi.Features.Sales.ListSales;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.UpdateSale;
 using AutoMapper;
 using FluentAssertions;
@@ -20,6 +22,7 @@ public sealed class SalesMappingTests
     private readonly MapperConfiguration _configuration = new(config =>
     {
         config.AddProfile<CreateSaleProfile>();
+        config.AddProfile<ListSalesProfile>();
         config.AddProfile<UpdateSaleProfile>();
         config.AddProfile<SaleContractProfile>();
     });
@@ -142,5 +145,21 @@ public sealed class SalesMappingTests
 
         // Then
         command.SaleNumber.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Tests that the list request becomes a query with the same paging and ordering, an omitted one staying null.
+    /// </summary>
+    [Fact(DisplayName = "Given a list-sales request When mapping it to ListSalesQuery Then page, size and order are copied and an omitted one stays null")]
+    public void Given_ListSalesRequest_When_MappingToQuery_Then_ParametersAreCopied()
+    {
+        // Given
+        var request = new ListSalesRequest { Page = 2, Order = "saleDate desc" };
+
+        // When
+        var query = _configuration.CreateMapper().Map<ListSalesQuery>(request);
+
+        // Then
+        query.Should().BeEquivalentTo(new { Page = 2, Size = (int?)null, Order = "saleDate desc" });
     }
 }

@@ -3,9 +3,11 @@ using Ambev.DeveloperEvaluation.Application.Sales.CancelSale;
 using Ambev.DeveloperEvaluation.Application.Sales.CancelSaleItem;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
+using Ambev.DeveloperEvaluation.Application.Sales.ListSales;
 using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.CreateSale;
+using Ambev.DeveloperEvaluation.WebApi.Features.Sales.ListSales;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.UpdateSale;
 using AutoMapper;
 using FluentAssertions;
@@ -39,6 +41,7 @@ public sealed class SalesControllerTests
         var mapper = new MapperConfiguration(config =>
         {
             config.AddProfile<CreateSaleProfile>();
+            config.AddProfile<ListSalesProfile>();
             config.AddProfile<UpdateSaleProfile>();
             config.AddProfile<SaleContractProfile>();
         }).CreateMapper();
@@ -96,6 +99,28 @@ public sealed class SalesControllerTests
         var ok = response.Should().BeOfType<OkObjectResult>().Subject;
         MvcJson.Serialize(ok.Value).Should().Be(
             $$"""{"success":true,"message":"Sale retrieved successfully","data":{{ExampleSaleJson}}}""");
+    }
+
+    /// <summary>
+    /// Tests that listing sends the query built from the request and returns 200 with the paged envelope, built once.
+    /// </summary>
+    [Fact(DisplayName = "Given paging and ordering parameters When listing sales Then it sends the query and returns 200 with the paged envelope")]
+    public async Task Given_PagingAndOrdering_When_ListingSales_Then_Returns200WithPagedEnvelope()
+    {
+        // Given
+        var request = new ListSalesRequest { Page = 2, Size = 1, Order = "\"saleDate desc\"" };
+        ListSalesQuery? sent = null;
+        _mediator.Send(Arg.Do<ListSalesQuery>(query => sent = query), Arg.Any<CancellationToken>())
+            .Returns(new ListSalesResult([ExampleResult()], Page: 2, Size: 1, TotalCount: 3));
+
+        // When
+        var response = await _controller.ListSales(request, CancellationToken.None);
+
+        // Then
+        sent.Should().BeEquivalentTo(request);
+        var ok = response.Should().BeOfType<OkObjectResult>().Subject;
+        MvcJson.Serialize(ok.Value).Should().Be(
+            $$"""{"success":true,"message":"Sales retrieved successfully","data":[{{ExampleSaleJson}}],"currentPage":2,"totalPages":3,"totalItems":3}""");
     }
 
     /// <summary>
