@@ -68,3 +68,23 @@ jobs:
           tags: ambevdeveloperevaluationwebapi:pr-${{ github.event.pull_request.number || github.run_number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  portal:
+    name: Portal build and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: portal
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:ci

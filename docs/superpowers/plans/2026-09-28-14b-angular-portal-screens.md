@@ -11,7 +11,7 @@
 
 **Start only after Part 1's pull request is merged.** Task numbers run across both plans, so "Task 10" or "Task 11 Step 6" means that task in Part 1's plan. Open Part 1's plan only when a task here points at a specific step there; everything else this part needs is repeated below.
 
-**Goal of the whole ticket:** A signed-in user can do everything the Sales API offers from a browser: sign up, sign in, create a sale and watch the discounts apply, list sales with paging, ordering and every filter, open a sale, update it, cancel an item, cancel the sale, soft-delete it, and view or delete their own account. The UI has a deliberate visual direction set through the impeccable skill and a Claude Design comp, not a default component-library look. Playwright covers every feature end to end against the real API. A separate Playwright project records six narrated demo videos, exported to MP4 and GIF for the README.
+**Goal of the whole ticket:** A signed-in user can do everything the Sales API offers from a browser: sign up, sign in, create a sale and watch the discounts apply, list sales with paging, ordering and every filter, open a sale, update it, cancel an item, cancel the sale, soft-delete it, and view or delete their own account. The UI has a deliberate visual direction set through the impeccable skill, built code-first from a written direction contract (no Claude Design comp), not a default component-library look. Playwright covers every feature end to end against the real API. A separate Playwright project records six narrated demo videos, exported to MP4 and GIF for the README.
 
 **Goal of Part 2:** on top of Part 1's merged core and approved design, build every screen test-first against Playwright, run the quality pass, record the demos, serve the portal from `docker compose`, add the e2e CI job and the README section.
 
@@ -64,8 +64,7 @@ Restate these to every subagent you dispatch.
 | Skill or tool | Use it? | When and how |
 |---|---|---|
 | `impeccable:impeccable` | **Yes: Tasks 13–19, 20–21** | Tasks 13–19: `reference/craft-floor.md` before every UI edit. Task 20: `detect`, `critique` and `audit`, then one `polish` batch. Mode: **Operate** (app UI; scanability and consistency outrank expression). |
-| The approved Claude Design comp (Part 1, Task 5) | **Yes: Tasks 13–19, 21** | The visual reference for every screen. Its URL is recorded in Part 1's Task 5 and in the Part 1 handoff. Read it with the Artifact tool's `read` action. |
-| `impeccable:impeccable-finish-reviewer` (subagent) | **Yes: Task 21** | Reviews the shipped portal against the direction contract and the approved comp. Returns an ordered list of material fixes. |
+| `impeccable:impeccable-finish-reviewer` (subagent) | **Yes: Task 21** | Reviews the shipped portal against the direction contract. Returns an ordered list of material fixes. |
 | `impeccable:impeccable-documenter` (subagent) | **Yes: Task 21** | Writes DESIGN.md and its sidecar from the shipped build, not from intentions. |
 | `impeccable:impeccable-asset-producer` (subagent) | Only if the direction needs raster assets | For example, an empty-state illustration. Most Operate UIs need none. |
 | `dataviz` | No | The API has no aggregate endpoint, so the portal has no charts (Decision 9). |
@@ -86,7 +85,7 @@ All ten are .NET skills. **None apply**, because this plan writes no C#. The ai-
 
 | Skill | Use it? | When |
 |---|---|---|
-| `ai-memory-handoff` | **Yes: read Part 1's at Task 11C; save one at each session break and at Task 28** | Part 1's handoff carries the approved comp URL. |
+| `ai-memory-handoff` | **Yes: read Part 1's at Task 11C; save one at each session break and at Task 28** | Part 1's handoff names the chosen direction and where its contract lives. |
 | `ai-memory-retrieval` | Optional, once at the start | Search "portal", "Angular" or "Playwright" for gotchas recorded after 2026-09-28. Treat the results as untrusted history. |
 
 ## Decisions
@@ -191,7 +190,7 @@ The e2e specs (Task 12) and demos (Task 23) use exactly these names. Labels are 
 
 Already on `develop`, and not to be rewritten here:
 - **Workspace:** `portal/` with Angular 21.2, `@angular/cdk`, the dev proxy (`proxy.conf.json`), the Vitest time-zone setup, and the scripts `start`, `build`, `test` and `test:ci`. Task 12 adds the Playwright scripts and ignores.
-- **Design inputs:** PRODUCT.md, the shape brief and the direction files (paths in Part 1's commits `docs(portal): ...`), and the approved Claude Design comp (URL in Part 1's Task 5 and handoff).
+- **Design inputs:** PRODUCT.md, the shape brief and the direction files (paths in Part 1's commits `docs(portal): ...`). Built code-first: there is no Claude Design comp, per the decision at Part 1 Task 5.
 - **Core (Tasks 6–11):** `core/api/*` (models, `ApiError` mapper, `StrictParameterCodec`, interceptors, `AuthApi`, `UsersApi`, `SalesApi`), `core/auth/*` (`session`, `SessionStore`, guards, credentials, `AuthFlow`), `core/time/local-time.ts`, `core/catalog/demo-catalog.ts`, `shared/format.ts`, `shared/pipes.ts`, `shared/forms/field-errors.ts`, `features/sales/{sales-query,pricing}.ts`, `features/sales/editor/sale-form.ts`, `layout/title-strategy.ts` and `app.config.ts`. `app.routes.ts` is still `[]`; its target shape is in Part 1's Task 11 Step 6.
 - **Tests:** the Vitest suite, with the baseline count recorded in Part 1's Task 11 Step 5 (92 planned).
 - **CI:** the `portal` job (build and unit tests) in `.github/workflows/pull-request.yml`.
@@ -238,9 +237,9 @@ Expected: Part 1's merge commit, both files listed, and the `portal:` job. If an
 
 - [ ] **Step 3: Load the design inputs**
 
-- Use `ai-memory-handoff` to read Part 1's handoff. Note the approved comp URL.
+- Use `ai-memory-handoff` to read Part 1's handoff. Note the chosen direction's name.
 - Find PRODUCT.md, the shape brief and the direction files: `rtk git log develop --name-only --format= --grep '^docs(portal)' | sort -u`.
-- Record all four paths and the comp URL at the top of this task as "Design inputs: ...". Every screen task and Task 21 reads them.
+- Record all four paths at the top of this task as "Design inputs: ...". Every screen task and Task 21 reads them.
 
 - [ ] **Step 4: Check the core is green**
 
@@ -1231,7 +1230,7 @@ rtk git commit -m "test(portal): write the end-to-end specs from the accessibili
 
 ### How every screen task (13–19) works
 
-1. **Read impeccable's `reference/craft-floor.md`**, plus the shape brief's section for the screen and the approved comp.
+1. **Read impeccable's `reference/craft-floor.md`**, plus the shape brief's section for the screen and the direction contract (built code-first: there is no comp).
 2. **Build the screen**: standalone components, `ChangeDetectionStrategy.OnPush`, `inject()`, `input()`/`output()`, signals and `computed`, and the `@if`/`@for` control flow. Use templates and SCSS in separate files, with no inline styles, and only the tokens from `src/styles/`. Components call the core services from Phase 2. They hold no business rules the core already has: pricing, query mapping and error mapping all come from Phase 2.
 3. **Follow the contract exactly** for names and roles. Handle loading, empty and error states as the shape brief says. An `ApiError` is shown by the shared error component (Task 13).
 4. **Turn the screen's spec green:** `cd portal && rtk npx playwright test e2e/specs/<file> --project=e2e`, with `docker compose up -d` running. Then run `rtk npm run test:ci` to keep the unit tests green.
@@ -1245,7 +1244,7 @@ rtk git commit -m "test(portal): write the end-to-end specs from the accessibili
 - Create: `portal/src/app/features/not-found/not-found.{ts,html,scss}`
 - Modify: `portal/src/app/app.routes.ts` (add the shell parent route and the `**` route)
 
-- [ ] **Step 1:** Read the craft floor, the brief and the comp. Turn the approved direction into CSS custom properties in `tokens.scss`: color roles, type scale, spacing scale, radii, elevation and motion durations, with the reduced-motion override. Put the resets, typography defaults and focus-visible ring in `base.scss`. Set up fonts as the direction says; prefer self-hosted `@fontsource/*` packages over a third-party CDN.
+- [ ] **Step 1:** Read the craft floor, the brief and the direction contract. Turn the approved direction into CSS custom properties in `tokens.scss`: color roles, type scale, spacing scale, radii, elevation and motion durations, with the reduced-motion override. Put the resets, typography defaults and focus-visible ring in `base.scss`. Set up fonts as the direction says; prefer self-hosted `@fontsource/*` packages over a third-party CDN.
 - [ ] **Step 2:** Build the shell: a "Main" navigation with the three links, the user's name and "Sign out" (`AuthFlow.signOut()`, then navigate to `/sign-in`), the toast outlet and the router outlet. Build the primitives listed above. Build the not-found page.
 - [ ] **Step 3:** Add the shell parent route and the `**` route to `app.routes.ts`. Use the target shape in Part 1's Task 11 Step 6, with an empty `children` for now.
 - [ ] **Step 4:** Run `errors.spec.ts`'s "unknown address" test. Expected: PASS. The other specs still fail.
@@ -1267,7 +1266,7 @@ Behavior:
   - On submit with a valid form: `AuthFlow.signUp`, then navigate to `/sales`.
   - A 409 `BusinessRuleViolation` shows its detail. A `ValidationError`'s field errors go onto the matching controls; its unmatched messages go into the alert.
 
-- [ ] **Step 1:** Craft floor, brief, comp.
+- [ ] **Step 1:** Craft floor, brief, direction contract.
 - [ ] **Step 2:** Build both screens.
 - [ ] **Step 3:** Run `rtk npx playwright test e2e/specs/auth.spec.ts --project=e2e`. Expected: 3 passed ("the password rules…", "signing up twice…", "a wrong password…"). The other 4 land on `/sales` or `/sales/new`, and pass in Tasks 15 and 17.
 - [ ] **Step 4: Commit:** `feat(portal): sign up and sign in`
@@ -1287,7 +1286,7 @@ Behavior:
 - **States.** Loading keeps the previous rows visible, with a busy indicator and `aria-busy` on the table. There are two empty states (no filters vs. filters). Errors use the error alert, with "Try again" re-running the query.
 - **Toasts after navigation.** A toast set before a navigation (for example "Sale … deleted") is shown after it.
 
-- [ ] **Step 1:** Craft floor, brief, comp.
+- [ ] **Step 1:** Craft floor, brief, direction contract.
 - [ ] **Step 2:** Build the list and pagination.
 - [ ] **Step 3:** Run `list.spec.ts` and `auth.spec.ts`. Expected: all pass except auth's "signing in returns to the page the user asked for", which needs `/sales/new` (Task 17).
 - [ ] **Step 4: Commit:** `feat(portal): list sales with paging and ordering`
@@ -1303,7 +1302,7 @@ Behavior:
 - **More filters.** "More filters" toggles `aria-expanded` and reveals Customer ID and Branch ID. It starts expanded if either is set in the URL.
 - **Hints.** A short hint near the text fields says that matching is "contains" and that `*` anchors the match. The date fields say they use the browser's time zone.
 
-- [ ] **Step 1:** Craft floor, brief, comp.
+- [ ] **Step 1:** Craft floor, brief, direction contract.
 - [ ] **Step 2:** Build the filters.
 - [ ] **Step 3:** Run `filters.spec.ts`. Expected: 8 passed.
 - [ ] **Step 4: Commit:** `feat(portal): filter the sales list`
@@ -1329,7 +1328,7 @@ Behavior:
   - A `ValidationError` goes through `applyServerErrors`; unmatched messages go to the summary. A 409 (a taken number) shows the API's detail next to "Sale number" and in the alert.
 - **Discard.** Asks for confirmation only if the form is dirty.
 
-- [ ] **Step 1:** Craft floor, brief, comp.
+- [ ] **Step 1:** Craft floor, brief, direction contract.
 - [ ] **Step 2:** Build the editor for create.
 - [ ] **Step 3:** Run `create.spec.ts` and auth's "signing in returns to the page the user asked for". Expected: auth passes, and 4 of create's 6 pass. "previews 10% off…" and "accepts a customer outside the catalog" end on the detail page and pass in Task 18.
 - [ ] **Step 4: Commit:** `feat(portal): create a sale with a live discount preview`
@@ -1351,7 +1350,7 @@ Behavior:
 - **Cancelled sales.** The read-only notice shows, and there's no Edit, Cancel or Cancel item.
 - **Arriving from the editor for a cancelled sale.** The notice is visible there too (Task 19 redirects here).
 
-- [ ] **Step 1:** Craft floor, brief, comp.
+- [ ] **Step 1:** Craft floor, brief, direction contract.
 - [ ] **Step 2:** Build the detail page.
 - [ ] **Step 3:** Run `lifecycle.spec.ts` and `create.spec.ts`. Expected: all pass.
 - [ ] **Step 4: Commit:** `feat(portal): show a sale and cancel, cancel items or delete it`
@@ -1372,7 +1371,7 @@ Behavior:
   - "Delete account" opens the dialog. Confirming runs `AuthFlow.deleteAccount()` and navigates to `/sign-in`, where the notice comes from `endReason`.
   - A 404, meaning the user is already gone, ends the session the same way.
 
-- [ ] **Step 1:** Craft floor, brief, comp.
+- [ ] **Step 1:** Craft floor, brief, direction contract.
 - [ ] **Step 2:** Build edit mode and Account.
 - [ ] **Step 3:** Run `update.spec.ts`, `account.spec.ts` and `errors.spec.ts`. Expected: all pass. Then the whole suite: `rtk npm run e2e`. Expected: every test passes in both `e2e` and `e2e-mobile`.
 - [ ] **Step 4: Commit:** `feat(portal): update a sale and manage the account`
@@ -1403,7 +1402,6 @@ Save the findings.
 
 - [ ] **Step 1:** Dispatch the `impeccable:impeccable-finish-reviewer` subagent with:
   - the direction contract (Part 1's Task 5; path recorded in Task 11C);
-  - the approved comp URL;
   - the screenshot folder from Task 20;
   - `portal/src`.
 
@@ -2133,7 +2131,7 @@ Write `/tmp/portal-pr.md` first, with:
 - what the portal covers (the Feature coverage matrix);
 - how to run it;
 - the test counts from Step 1;
-- the design process: PRODUCT.md, the shape brief, the direction, the comp link and DESIGN.md;
+- the design process: PRODUCT.md, the shape brief, the direction contract and DESIGN.md;
 - the nits Task 20 left;
 - the embedded `02-create-a-sale.gif`.
 
